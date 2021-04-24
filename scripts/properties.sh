@@ -12,13 +12,13 @@ else
 fi
 
 # Termux packages configuration.
-TERMUX_APP_PACKAGE="com.termux"
+TERMUX_APP_PACKAGE="io.neoterm"
 TERMUX_BASE_DIR="/data/data/${TERMUX_APP_PACKAGE}/files"
 TERMUX_CACHE_DIR="/data/data/${TERMUX_APP_PACKAGE}/cache"
 TERMUX_ANDROID_HOME="${TERMUX_BASE_DIR}/home"
 TERMUX_PREFIX="${TERMUX_BASE_DIR}/usr"
 
 # Allow to override setup.
-if [ -f "$HOME/.termuxrc" ]; then
-	. "$HOME/.termuxrc"
+if [ -f "$HOME/.neorc" ]; then
+	. "$HOME/.neorc"
 fi
