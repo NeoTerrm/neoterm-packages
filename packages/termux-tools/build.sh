@@ -32,7 +32,7 @@ termux_step_make_install() {
 		chmod +x $WRAPPER_FILE
 	done
 
-	for script in chsh dalvikvm; do
+	for script in chsh dalvikvm pkg; do
 			install -Dm700 $TERMUX_PKG_BUILDER_DIR/$script $TERMUX_PREFIX/bin/$script
 			sed -i -e "s%\@TERMUX_APP_PACKAGE\@%${TERMUX_APP_PACKAGE}%g" \
 				-e "s%\@TERMUX_BASE_DIR\@%${TERMUX_BASE_DIR}%g" \

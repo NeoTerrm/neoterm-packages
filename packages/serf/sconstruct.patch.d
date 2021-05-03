@@ -18,3 +18,12 @@ diff -u -r ../serf-1.3.9/SConstruct ./SConstruct
  
  LIBNAME = 'libserf-%d' % (MAJOR,)
  if sys.platform != 'win32':
+@@ -182,7 +182,7 @@
+ 
+ unknown = opts.UnknownVariables()
+ if unknown:
+-  print 'Warning: Used unknown variables:', ', '.join(unknown.keys())
++  print "Warning: Used unknown variables:', ', ".join(unknown.keys())
+ 
+ apr = str(env['APR'])
+ apu = str(env['APU'])
