@@ -1,0 +1,24 @@
+--- ./gnulib/import/glob.in.h.orig	2021-05-10 05:34:15.305459051 +0000
++++ ./gnulib/import/glob.in.h	2021-05-10 05:33:43.109836678 +0000
+@@ -176,5 +176,21 @@
+ # endif
+ #endif
+ 
++#ifndef GLOB_PERIOD
++#define GLOB_PERIOD (1 << 7)
++#endif
++#ifndef GLOB_ONLYDIR
++#define GLOB_ONLYDIR (1 << 13)
++#endif
++#ifndef GLOB_TILDE_CHECK
++#define GLOB_TILDE_CHECK (1 << 14)
++#endif
++#ifndef __GLOB_FLAGS
++#define __GLOB_FLAGS (GLOB_ERR|GLOB_MARK|GLOB_NOSORT|GLOB_DOOFFS| \
++                      GLOB_NOESCAPE|GLOB_NOCHECK|GLOB_APPEND|     \
++                      GLOB_PERIOD|GLOB_ALTDIRFUNC|GLOB_BRACE|     \
++                      GLOB_NOMAGIC|GLOB_TILDE|GLOB_ONLYDIR|GLOB_TILDE_CHECK)
++#endif
++
+ #endif /* _@GUARD_PREFIX@_GLOB_H */
+ #endif /* _@GUARD_PREFIX@_GLOB_H */
