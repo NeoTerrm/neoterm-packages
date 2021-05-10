@@ -1,0 +1,40 @@
+From e8f9c3947dbde6a6ef4b37695c3c60cfd514416d Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?S=C3=B8ren=20L=2E=20Hansen?= <sorenisanerd@gmail.com>
+Date: Fri, 9 Apr 2021 12:37:28 -0700
+Subject: [PATCH] Update cli import path
+
+github.com/codegangsta/cli moved to github.com/urfave/cli
+
+Fixes yudai/gotty#306
+---
+ main.go        | 2 +-
+ utils/flags.go | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/main.go b/main.go
+index b6290bef..5c7dede9 100644
+--- a/main.go
++++ b/main.go
+@@ -9,7 +9,7 @@ import (
+ 	"strings"
+ 	"syscall"
+ 
+-	"github.com/codegangsta/cli"
++	"github.com/urfave/cli"
+ 
+ 	"github.com/yudai/gotty/backend/localcommand"
+ 	"github.com/yudai/gotty/pkg/homedir"
+diff --git a/utils/flags.go b/utils/flags.go
+index b5c66b9a..cf5c5449 100644
+--- a/utils/flags.go
++++ b/utils/flags.go
+@@ -7,8 +7,8 @@ import (
+ 	"reflect"
+ 	"strings"
+ 
+-	"github.com/codegangsta/cli"
+ 	"github.com/fatih/structs"
++	"github.com/urfave/cli"
+ 	"github.com/yudai/hcl"
+ 
+ 	"github.com/yudai/gotty/pkg/homedir"
