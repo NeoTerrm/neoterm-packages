@@ -12,6 +12,7 @@ termux_step_make_install() {
 	export GOPATH=$TERMUX_PKG_BUILDDIR
 	export BUILDDIR=$TERMUX_PREFIX/bin
 	cd $TERMUX_PKG_SRCDIR
+	go mod tidy
 	make build-nogui
 	install -Dm700 proton-bridge "$TERMUX_PREFIX"/bin/proton-bridge
 }
