@@ -12,6 +12,8 @@ termux_step_make() {
 	mkdir -p "${TERMUX_PKG_BUILDDIR}/src/github.com/helm"
 	cp -a "${TERMUX_PKG_SRCDIR}" "${TERMUX_PKG_BUILDDIR}/src/github.com/helm/helm"
 	cd "${TERMUX_PKG_BUILDDIR}/src/github.com/helm/helm"
+	# go get github.com/docker/docker/pkg/system@v1.4.2-0.20200203170920-46ec8731fbce
+	go get github.com/docker/docker/pkg/system
 	make
 }
 

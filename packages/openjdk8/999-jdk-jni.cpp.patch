@@ -1,0 +1,11 @@
+--- ./jdk/src/share/native/com/sun/java/util/jar/pack/jni.cpp.orig	2021-05-11 06:27:32.224150625 +0000
++++ ./jdk/src/share/native/com/sun/java/util/jar/pack/jni.cpp	2021-05-11 06:27:43.060100331 +0000
+@@ -292,7 +292,7 @@
+ 
+   if (uPtr->aborting()) {
+     THROW_IOE(uPtr->get_abort_message());
+-    return false;
++    return NULL;
+   }
+ 
+   // We have fetched all the files.

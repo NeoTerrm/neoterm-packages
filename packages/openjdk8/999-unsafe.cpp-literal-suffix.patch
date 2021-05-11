@@ -1,0 +1,11 @@
+--- ./hotspot/src/share/vm/prims/unsafe.cpp.orig	2021-05-11 04:54:29.648605078 +0000
++++ ./hotspot/src/share/vm/prims/unsafe.cpp	2021-05-11 04:54:44.440227198 +0000
+@@ -1003,7 +1003,7 @@
+ UNSAFE_END
+ 
+ 
+-#define DAC_Args CLS"[B["OBJ
++#define DAC_Args CLS "[B[" OBJ
+ // define a class but do not make it known to the class loader or system dictionary
+ // - host_class:  supplies context for linkage, access control, protection domain, and class loader
+ // - data:  bytes of a class file, a raw memory address (length gives the number of bytes)

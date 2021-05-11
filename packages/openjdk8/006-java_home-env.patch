@@ -1,0 +1,29 @@
+From 1b8189cdf0b601eec8fb9920717b5cf3da2305e9 Mon Sep 17 00:00:00 2001
+From: CosineMath <1365471105@qq.com>
+Date: Mon, 4 Jan 2021 23:53:37 +0800
+Subject: [PATCH] Use JAVA_HOME environment variable to get installed
+ directory.
+
+---
+ jdk/src/solaris/bin/java_md_common.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/jdk/src/solaris/bin/java_md_common.c b/jdk/src/solaris/bin/java_md_common.c
+index fb446db739..b9edd63e02 100644
+--- a/jdk/src/solaris/bin/java_md_common.c
++++ b/jdk/src/solaris/bin/java_md_common.c
+@@ -31,6 +31,14 @@
+ jboolean
+ GetApplicationHome(char *buf, jint bufsize)
+ {
++#ifdef __ANDROID__
++    char* java_home_var = getenv("JAVA_HOME");
++    if (java_home_var != NULL){
++        JLI_Snprintf(buf, bufsize, "%s", java_home_var);
++        buf[bufsize-1] = '\0';
++        return JNI_TRUE;
++    }
++#endif
+     const char *execname = GetExecName();
+     if (execname != NULL) {
+         JLI_Snprintf(buf, bufsize, "%s", execname);

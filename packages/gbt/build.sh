@@ -17,9 +17,15 @@ termux_step_make_install() {
 	mkdir -p $GOPATH/{bin,pkg,src/github.com/jtyr}
 	ln -fs $TERMUX_PKG_SRCDIR $GOPATH/src/github.com/jtyr/gbt
 
-	go build -ldflags="-s -w -X main.version=$TERMUX_PKG_VERSION -X main.build=${_COMMIT::6}" -o $TERMUX_PREFIX/bin/gbt github.com/jtyr/gbt/cmd/gbt
+	cd "$GOPATH"/src
+	go mod init dummy
+	cd "$GOPATH"/src/github.com/jtyr/gbt/cmd/gbt
+	go get
+
+	go build -ldflags="-s -w -X main.version=$TERMUX_PKG_VERSION -X main.build=${_COMMIT::6}" -o $TERMUX_PREFIX/bin/gbt 
 
 	mkdir -p $TERMUX_PREFIX/{doc/gbt,share/gbt}
 	cp -r $TERMUX_PKG_SRCDIR/{sources,themes} $TERMUX_PREFIX/share/gbt/
 	cp -r $TERMUX_PKG_SRCDIR/{LICENSE,README.md} $TERMUX_PREFIX/doc/gbt/
 }
+

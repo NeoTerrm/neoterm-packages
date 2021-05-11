@@ -1,0 +1,10 @@
+--- ./hotspot/src/os_cpu/linux_aarch64/vm/os_linux_aarch64.cpp.orig	2021-05-11 04:26:08.307309735 +0000
++++ ./hotspot/src/os_cpu/linux_aarch64/vm/os_linux_aarch64.cpp	2021-05-11 04:26:13.038944969 +0000
+@@ -72,7 +72,6 @@
+ # include <pwd.h>
+ # include <poll.h>
+ # include <ucontext.h>
+-# include <fpu_control.h>
+ 
+ #define REG_FP 29
+ 

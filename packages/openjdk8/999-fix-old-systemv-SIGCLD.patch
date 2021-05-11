@@ -1,0 +1,12 @@
+--- ./hotspot/src/os/linux/vm/jvm_linux.cpp.orig	2021-05-11 04:19:32.941923490 +0000
++++ ./hotspot/src/os/linux/vm/jvm_linux.cpp	2021-05-11 04:20:02.989657941 +0000
+@@ -154,7 +154,9 @@
+ #ifdef SIGSTKFLT
+   "STKFLT",     SIGSTKFLT,      /* Stack fault.  */
+ #endif
++#ifdef SIGCLD
+   "CLD",        SIGCLD,         /* Same as SIGCHLD (System V).  */
++#endif
+   "CHLD",       SIGCHLD,        /* Child status has changed (POSIX).  */
+   "CONT",       SIGCONT,        /* Continue (POSIX).  */
+   "STOP",       SIGSTOP,        /* Stop, unblockable (POSIX).  */

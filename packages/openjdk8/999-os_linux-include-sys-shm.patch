@@ -1,0 +1,12 @@
+--- ./hotspot/src/os/linux/vm/os_linux.cpp.orig	2021-05-11 05:20:52.014472449 +0000
++++ ./hotspot/src/os/linux/vm/os_linux.cpp	2021-05-11 05:21:02.662404585 +0000
+@@ -99,7 +99,9 @@
+ # include <gnu/libc-version.h>
+ #endif
+ # include <sys/ipc.h>
++#ifndef __ANDROID__
+ # include <sys/shm.h>
++#endif
+ # include <link.h>
+ # include <stdint.h>
+ # include <inttypes.h>

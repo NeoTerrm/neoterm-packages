@@ -1,0 +1,11 @@
+--- ./hotspot/src/share/vm/utilities/vmError.cpp.orig	2021-05-11 05:00:19.492865524 +0000
++++ ./hotspot/src/share/vm/utilities/vmError.cpp	2021-05-11 05:01:12.367273934 +0000
+@@ -399,7 +399,7 @@
+ 
+   STEP(15, "(printing type of error)")
+ 
+-     switch(_id) {
++     switch((unsigned) _id) {
+        case OOM_MALLOC_ERROR:
+        case OOM_MMAP_ERROR:
+          if (_size) {

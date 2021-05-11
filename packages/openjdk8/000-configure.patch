@@ -1,0 +1,85 @@
+From 45c9556539ea4ae153348eb93ce4838a059e9593 Mon Sep 17 00:00:00 2001
+From: CosineMath <1365471105@qq.com>
+Date: Wed, 11 Nov 2020 21:25:08 +0800
+Subject: [PATCH] Start porting to Android. Changes for passing configure.
+
+---
+ common/autoconf/build-aux/autoconf-config.sub | 3 +++
+ common/autoconf/generated-configure.sh        | 7 +++++++
+ common/autoconf/libraries.m4                  | 2 ++
+ common/autoconf/platform.m4                   | 5 +++++
+ configure                                     | 0
+ 5 files changed, 17 insertions(+)
+ mode change 100644 => 100755 configure
+
+diff --git a/common/autoconf/build-aux/autoconf-config.sub b/common/autoconf/build-aux/autoconf-config.sub
+index 1aab2b303e..f38997fb41 100644
+--- a/common/autoconf/build-aux/autoconf-config.sub
++++ b/common/autoconf/build-aux/autoconf-config.sub
+@@ -1257,6 +1257,9 @@ case $os in
+ 	-gnu/linux*)
+ 		os=`echo $os | sed -e 's|gnu/linux|linux-gnu|'`
+ 		;;
++	-android*)
++		os=-android
++		;;
+ 	# First accept the basic system types.
+ 	# The portable systems comes first.
+ 	# Each alternative MUST END IN A *, to match a version number.
+diff --git a/common/autoconf/generated-configure.sh b/common/autoconf/generated-configure.sh
+index 93d0fbdcb2..a11e40bd95 100644
+--- a/common/autoconf/generated-configure.sh
++++ b/common/autoconf/generated-configure.sh
+@@ -13725,6 +13725,11 @@ $as_echo "$OPENJDK_BUILD_OS-$OPENJDK_BUILD_CPU" >&6; }
+       VAR_OS_API=posix
+       VAR_OS_ENV=solaris
+       ;;
++    *android*)
++      VAR_OS=linux
++      VAR_OS_API=posix
++      VAR_OS_ENV=linux
++      ;;
+     *darwin*)
+       VAR_OS=macosx
+       VAR_OS_API=posix
+@@ -47458,6 +47463,8 @@ $as_echo "$as_me: The path of FREETYPE_INCLUDE_PATH, which resolves as \"$path\"
+         FREETYPE_CFLAGS="-I$FREETYPE_INCLUDE_PATH"
+       fi
+     fi
++    
++    FREETYPE_CFLAGS="$FREETYPE_CFLAGS -fuse-ld=gold"
+ 
+     if test "x$FREETYPE_LIBS" = x; then
+ 
+diff --git a/common/autoconf/libraries.m4 b/common/autoconf/libraries.m4
+index 6d803f9b1c..9523034d79 100644
+--- a/common/autoconf/libraries.m4
++++ b/common/autoconf/libraries.m4
+@@ -577,6 +577,8 @@ AC_DEFUN_ONCE([LIB_SETUP_FREETYPE],
+         FREETYPE_CFLAGS="-I$FREETYPE_INCLUDE_PATH"
+       fi
+     fi
++    
++    FREETYPE_CFLAGS="$FREETYPE_CFLAGS -fuse-ld=gold"
+ 
+     if test "x$FREETYPE_LIBS" = x; then
+       BASIC_FIXUP_PATH(FREETYPE_LIB_PATH)
+diff --git a/common/autoconf/platform.m4 b/common/autoconf/platform.m4
+index 945579d606..c54c580602 100644
+--- a/common/autoconf/platform.m4
++++ b/common/autoconf/platform.m4
+@@ -118,6 +118,11 @@ AC_DEFUN([PLATFORM_EXTRACT_VARS_FROM_OS],
+       VAR_OS_API=posix
+       VAR_OS_ENV=solaris
+       ;;
++    *android*)
++      VAR_OS=linux
++      VAR_OS_API=posix
++      VAR_OS_ENV=linux
++      ;;
+     *darwin*)
+       VAR_OS=macosx
+       VAR_OS_API=posix
+diff --git a/configure b/configure
+old mode 100644
+new mode 100755

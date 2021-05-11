@@ -1,0 +1,25 @@
+--- ./jdk/make/lib/Awt2dLibraries.gmk.orig	2021-05-11 07:37:54.727136182 +0000
++++ ./jdk/make/lib/Awt2dLibraries.gmk	2021-05-11 07:38:47.398397924 +0000
+@@ -617,11 +617,11 @@
+         XRSurfaceData.c \
+         XRBackendNative.c
+ 
+-    LIBAWT_XAWT_LDFLAGS_SUFFIX := $(LIBM) -lawt -lXext -lX11 -lXrender $(LIBDL) -lXtst -lXi -ljava -ljvm -lc
++    LIBAWT_XAWT_LDFLAGS_SUFFIX := $(LIBM) -lawt -lXext -lX11 -lXrender $(LIBDL) -ljava -ljvm -lc
+ 
+     ifeq ($(OPENJDK_TARGET_OS), linux)
+       # To match old build, add this to LDFLAGS instead of suffix.
+-      LIBAWT_XAWT_LDFLAGS += -lpthread
++      LIBAWT_XAWT_LDFLAGS += 
+     endif
+ 
+     $(eval $(call SetupNativeCompilation,BUILD_LIBAWT_XAWT, \
+@@ -1195,7 +1195,7 @@
+   else ifeq ($(OPENJDK_TARGET_OS), windows)
+     LIBSPLASHSCREEN_LDFLAGS_SUFFIX += kernel32.lib user32.lib gdi32.lib delayimp.lib -DELAYLOAD:user32.dll
+   else
+-    LIBSPLASHSCREEN_LDFLAGS_SUFFIX += $(X_LIBS) -lX11 -lXext $(LIBM) -lpthread
++    LIBSPLASHSCREEN_LDFLAGS_SUFFIX += $(X_LIBS) -lX11 -lXext $(LIBM)
+   endif
+ 
+   $(eval $(call SetupNativeCompilation,LIBSPLASHSCREEN, \

@@ -1,0 +1,141 @@
+diff -ru ./hotspot.orig/src/cpu/aarch64/vm/vtableStubs_aarch64.cpp ./hotspot/src/cpu/aarch64/vm/vtableStubs_aarch64.cpp
+--- ./hotspot.orig/src/cpu/aarch64/vm/vtableStubs_aarch64.cpp	2021-05-11 03:49:29.677343705 +0000
++++ ./hotspot/src/cpu/aarch64/vm/vtableStubs_aarch64.cpp	2021-05-11 03:54:40.502798915 +0000
+@@ -112,7 +112,7 @@
+   __ flush();
+ 
+   if (PrintMiscellaneous && (WizardMode || Verbose)) {
+-    tty->print_cr("vtable #%d at "PTR_FORMAT"[%d] left over: %d",
++    tty->print_cr("vtable #%d at " PTR_FORMAT "[%d] left over: %d",
+                   vtable_index, p2i(s->entry_point()),
+                   (int)(s->code_end() - s->entry_point()),
+                   (int)(s->code_end() - __ pc()));
+@@ -205,7 +205,7 @@
+   __ flush();
+ 
+   if (PrintMiscellaneous && (WizardMode || Verbose)) {
+-    tty->print_cr("itable #%d at "PTR_FORMAT"[%d] left over: %d",
++    tty->print_cr("itable #%d at " PTR_FORMAT "[%d] left over: %d",
+                   itable_index, p2i(s->entry_point()),
+                   (int)(s->code_end() - s->entry_point()),
+                   (int)(s->code_end() - __ pc()));
+diff -ru ./hotspot.orig/src/share/vm/gc_implementation/g1/g1BlockOffsetTable.inline.hpp ./hotspot/src/share/vm/gc_implementation/g1/g1BlockOffsetTable.inline.hpp
+--- ./hotspot.orig/src/share/vm/gc_implementation/g1/g1BlockOffsetTable.inline.hpp	2021-05-11 03:49:29.753340463 +0000
++++ ./hotspot/src/share/vm/gc_implementation/g1/g1BlockOffsetTable.inline.hpp	2021-05-11 03:51:42.180241673 +0000
+@@ -49,10 +49,10 @@
+ 
+ #define check_index(index, msg)                                                \
+   assert((index) < (_reserved.word_size() >> LogN_words),                      \
+-         err_msg("%s - index: "SIZE_FORMAT", _vs.committed_size: "SIZE_FORMAT, \
++         err_msg("%s - index: " SIZE_FORMAT", _vs.committed_size: " SIZE_FORMAT, \
+                  msg, (index), (_reserved.word_size() >> LogN_words)));        \
+   assert(G1CollectedHeap::heap()->is_in_exact(address_for_index_raw(index)),   \
+-         err_msg("Index "SIZE_FORMAT" corresponding to "PTR_FORMAT             \
++         err_msg("Index " SIZE_FORMAT " corresponding to " PTR_FORMAT             \
+                  " (%u) is not in committed area.",                            \
+                  (index),                                                      \
+                  p2i(address_for_index_raw(index)),                            \
+diff -ru ./hotspot.orig/src/share/vm/gc_implementation/parallelScavenge/psMarkSweep.cpp ./hotspot/src/share/vm/gc_implementation/parallelScavenge/psMarkSweep.cpp
+--- ./hotspot.orig/src/share/vm/gc_implementation/parallelScavenge/psMarkSweep.cpp	2021-05-11 03:49:29.761340122 +0000
++++ ./hotspot/src/share/vm/gc_implementation/parallelScavenge/psMarkSweep.cpp	2021-05-11 03:51:59.839636890 +0000
+@@ -665,7 +665,7 @@
+   jlong ret_val = now - _time_of_last_gc;
+   // XXX See note in genCollectedHeap::millis_since_last_gc().
+   if (ret_val < 0) {
+-    NOT_PRODUCT(warning("time warp: "INT64_FORMAT, ret_val);)
++    NOT_PRODUCT(warning("time warp: " INT64_FORMAT, ret_val);)
+     return 0;
+   }
+   return ret_val;
+diff -ru ./hotspot.orig/src/share/vm/gc_implementation/parallelScavenge/psParallelCompact.cpp ./hotspot/src/share/vm/gc_implementation/parallelScavenge/psParallelCompact.cpp
+--- ./hotspot.orig/src/share/vm/gc_implementation/parallelScavenge/psParallelCompact.cpp	2021-05-11 03:49:29.761340122 +0000
++++ ./hotspot/src/share/vm/gc_implementation/parallelScavenge/psParallelCompact.cpp	2021-05-11 03:53:00.465677810 +0000
+@@ -3288,7 +3288,7 @@
+   jlong ret_val = now - _time_of_last_gc;
+   // XXX See note in genCollectedHeap::millis_since_last_gc().
+   if (ret_val < 0) {
+-    NOT_PRODUCT(warning("time warp: "INT64_FORMAT, ret_val);)
++    NOT_PRODUCT(warning("time warp: " INT64_FORMAT, ret_val);)
+     return 0;
+   }
+   return ret_val;
+diff -ru ./hotspot.orig/src/share/vm/gc_implementation/shared/markBitMap.inline.hpp ./hotspot/src/share/vm/gc_implementation/shared/markBitMap.inline.hpp
+--- ./hotspot.orig/src/share/vm/gc_implementation/shared/markBitMap.inline.hpp	2021-05-11 03:49:29.765339951 +0000
++++ ./hotspot/src/share/vm/gc_implementation/shared/markBitMap.inline.hpp	2021-05-11 03:50:52.626028047 +0000
+@@ -78,8 +78,8 @@
+   assert(_bmStartWord <= (addr) && (addr) < (_bmStartWord + _bmWordSize),      \
+          "outside underlying space?");                                         \
+   /* assert(G1CollectedHeap::heap()->is_in_exact(addr),                  \
+-         err_msg("Trying to access not available bitmap "PTR_FORMAT            \
+-                 " corresponding to "PTR_FORMAT" (%u)",                        \
++         err_msg("Trying to access not available bitmap " PTR_FORMAT            \
++                 " corresponding to " PTR_FORMAT " (%u)",                        \
+                  p2i(this), p2i(addr), G1CollectedHeap::heap()->addr_to_region(addr))); */
+ 
+ inline void MarkBitMap::mark(HeapWord* addr) {
+diff -ru ./hotspot.orig/src/share/vm/gc_implementation/shared/parGCAllocBuffer.cpp ./hotspot/src/share/vm/gc_implementation/shared/parGCAllocBuffer.cpp
+--- ./hotspot.orig/src/share/vm/gc_implementation/shared/parGCAllocBuffer.cpp	2021-05-11 03:49:29.765339951 +0000
++++ ./hotspot/src/share/vm/gc_implementation/shared/parGCAllocBuffer.cpp	2021-05-11 03:50:19.215311875 +0000
+@@ -98,10 +98,10 @@
+   if (_allocated == 0) {
+     assert(_unused == 0,
+            err_msg("Inconsistency in PLAB stats: "
+-                   "_allocated: "SIZE_FORMAT", "
+-                   "_wasted: "SIZE_FORMAT", "
+-                   "_unused: "SIZE_FORMAT", "
+-                   "_used  : "SIZE_FORMAT,
++                   "_allocated: " SIZE_FORMAT", "
++                   "_wasted: " SIZE_FORMAT", "
++                   "_unused: " SIZE_FORMAT", "
++                   "_used  : " SIZE_FORMAT,
+                    _allocated, _wasted, _unused, _used));
+ 
+     _allocated = 1;
+diff -ru ./hotspot.orig/src/share/vm/gc_implementation/shenandoah/shenandoahBarrierSet.cpp ./hotspot/src/share/vm/gc_implementation/shenandoah/shenandoahBarrierSet.cpp
+--- ./hotspot.orig/src/share/vm/gc_implementation/shenandoah/shenandoahBarrierSet.cpp	2021-05-11 03:49:29.765339951 +0000
++++ ./hotspot/src/share/vm/gc_implementation/shenandoah/shenandoahBarrierSet.cpp	2021-05-11 03:49:58.924124948 +0000
+@@ -130,7 +130,7 @@
+ }
+ 
+ void ShenandoahBarrierSet::read_ref_field(void* v) {
+-  //    tty->print_cr("read_ref_field: v = "PTR_FORMAT, v);
++  //    tty->print_cr("read_ref_field: v = " PTR_FORMAT, v);
+   // return *v;
+ }
+ 
+diff -ru ./hotspot.orig/src/share/vm/memory/genCollectedHeap.cpp ./hotspot/src/share/vm/memory/genCollectedHeap.cpp
+--- ./hotspot.orig/src/share/vm/memory/genCollectedHeap.cpp	2021-05-11 03:49:29.785339098 +0000
++++ ./hotspot/src/share/vm/memory/genCollectedHeap.cpp	2021-05-11 03:53:54.684066840 +0000
+@@ -1401,7 +1401,7 @@
+   // back a time later than 'now'.
+   jlong retVal = now - tolgc_cl.time();
+   if (retVal < 0) {
+-    NOT_PRODUCT(warning("time warp: "INT64_FORMAT, (int64_t) retVal);)
++    NOT_PRODUCT(warning("time warp: " INT64_FORMAT, (int64_t) retVal);)
+     return 0;
+   }
+   return retVal;
+diff -ru ./hotspot.orig/src/share/vm/memory/generation.hpp ./hotspot/src/share/vm/memory/generation.hpp
+--- ./hotspot.orig/src/share/vm/memory/generation.hpp	2021-05-11 03:49:29.785339098 +0000
++++ ./hotspot/src/share/vm/memory/generation.hpp	2021-05-11 03:54:13.027549424 +0000
+@@ -423,7 +423,7 @@
+     // have to guard against non-monotonicity.
+     NOT_PRODUCT(
+       if (now < _time_of_last_gc) {
+-        warning("time warp: "INT64_FORMAT" to "INT64_FORMAT, (int64_t)_time_of_last_gc, (int64_t)now);
++        warning("time warp: " INT64_FORMAT " to " INT64_FORMAT, (int64_t)_time_of_last_gc, (int64_t)now);
+       }
+     )
+     return _time_of_last_gc;
+diff -ru ./hotspot.orig/src/share/vm/memory/referenceProcessor.cpp ./hotspot/src/share/vm/memory/referenceProcessor.cpp
+--- ./hotspot.orig/src/share/vm/memory/referenceProcessor.cpp	2021-05-11 03:49:29.785339098 +0000
++++ ./hotspot/src/share/vm/memory/referenceProcessor.cpp	2021-05-11 03:53:35.776614433 +0000
+@@ -164,7 +164,7 @@
+ 
+   NOT_PRODUCT(
+   if (now < _soft_ref_timestamp_clock) {
+-    warning("time warp: "INT64_FORMAT" to "INT64_FORMAT,
++    warning("time warp: " INT64_FORMAT " to " INT64_FORMAT,
+             _soft_ref_timestamp_clock, now);
+   }
+   )

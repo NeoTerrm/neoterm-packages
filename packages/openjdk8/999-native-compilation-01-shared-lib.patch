@@ -1,0 +1,11 @@
+--- ./make/common/NativeCompilation.gmk.orig	2021-05-11 06:38:57.771035508 +0000
++++ ./make/common/NativeCompilation.gmk	2021-05-11 06:45:33.517594931 +0000
+@@ -522,7 +522,7 @@
+ 
+     $$($1_TARGET) : $$($1_EXPECTED_OBJS) $$($1_RES) $$($1_REAL_MAPFILE)
+ 	$$(call LINKING_MSG,$$($1_BASENAME))
+-	$$($1_LD) $$($1_LDFLAGS) $$($1_EXTRA_LDFLAGS) $(LD_OUT_OPTION)$$@ \
++	$$($1_LD) -shared $$($1_LDFLAGS) $$($1_EXTRA_LDFLAGS) $(LD_OUT_OPTION)$$@ \
+ 	$$($1_EXPECTED_OBJS) $$($1_RES) $$($1_LDFLAGS_SUFFIX) \
+ 	$$($1_EXTRA_LDFLAGS_SUFFIX)
+ 
