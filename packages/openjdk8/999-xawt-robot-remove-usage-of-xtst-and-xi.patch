@@ -1,0 +1,51 @@
+--- ./jdk/src/solaris/native/sun/awt/awt_Robot.c.orig	2021-05-11 07:33:14.167151198 +0000
++++ ./jdk/src/solaris/native/sun/awt/awt_Robot.c	2021-05-11 07:36:50.932036008 +0000
+@@ -38,9 +38,6 @@
+ #include <X11/Xutil.h>
+ #include <X11/Xmd.h>
+ #include <X11/extensions/xtestext1.h>
+-#include <X11/extensions/XTest.h>
+-#include <X11/extensions/XInput.h>
+-#include <X11/extensions/XI.h>
+ #include <jni.h>
+ #include <sizecalc.h>
+ #include "canvas.h"
+@@ -95,37 +92,7 @@
+ }
+ 
+ static int32_t isXTestAvailable() {
+-    int32_t major_opcode, first_event, first_error;
+-    int32_t  event_basep, error_basep, majorp, minorp;
+-    int32_t isXTestAvailable;
+-
+-    /* check if XTest is available */
+-    isXTestAvailable = XQueryExtension(awt_display, XTestExtensionName, &major_opcode, &first_event, &first_error);
+-    if (isXTestAvailable) {
+-        DTRACE_PRINTLN3("RobotPeer: XQueryExtension(XTEST) returns major_opcode = %d, first_event = %d, first_error = %d",
+-                        major_opcode, first_event, first_error);
+-        /* check if XTest version is OK */
+-        XTestQueryExtension(awt_display, &event_basep, &error_basep, &majorp, &minorp);
+-        DTRACE_PRINTLN4("RobotPeer: XTestQueryExtension returns event_basep = %d, error_basep = %d, majorp = %d, minorp = %d",
+-                        event_basep, error_basep, majorp, minorp);
+-        if (majorp < 2 || (majorp == 2 && minorp < 2)) {
+-            /* bad version*/
+-            DTRACE_PRINTLN2("XRobotPeer: XTEST version is %d.%d \n", majorp, minorp);
+-            if (majorp == 2 && minorp == 1) {
+-                DTRACE_PRINTLN("XRobotPeer: XTEST is 2.1 - no grab is available\n");
+-            } else {
+-                isXTestAvailable = False;
+-            }
+-        } else {
+-            /* allow XTest calls even if someone else has the grab; e.g. during
+-             * a window resize operation. Works only with XTEST2.2*/
+-            XTestGrabControl(awt_display, True);
+-        }
+-    } else {
+-        DTRACE_PRINTLN("RobotPeer: XTEST extension is unavailable");
+-    }
+-
+-    return isXTestAvailable;
++    return False;
+ }
+ 
+ static Bool hasXCompositeOverlayExtension(Display *display) {

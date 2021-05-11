@@ -1,0 +1,38 @@
+--- ./hotspot/src/os/linux/vm/os_perf_linux.cpp.orig	2021-05-11 04:45:27.771277700 +0000
++++ ./hotspot/src/os/linux/vm/os_perf_linux.cpp	2021-05-11 04:45:50.642612424 +0000
+@@ -1651,7 +1651,7 @@
+     return l_links;
+ }
+ 
+-static int getifaddrs(struct ifaddrs **ifap)
++static int _getifaddrs(struct ifaddrs **ifap)
+ {
+     if(!ifap)
+     {
+@@ -1693,7 +1693,7 @@
+     return 0;
+ }
+ 
+-static void freeifaddrs(struct ifaddrs *ifa)
++static void _freeifaddrs(struct ifaddrs *ifa)
+ {
+     struct ifaddrs *l_cur;
+     while(ifa)
+@@ -1710,7 +1710,7 @@
+   ifaddrs* addresses;
+   ifaddrs* cur_address;
+ 
+-  if (getifaddrs(&addresses) != 0) {
++  if (_getifaddrs(&addresses) != 0) {
+     return OS_ERR;
+   }
+ 
+@@ -1727,7 +1727,7 @@
+     ret = cur;
+   }
+ 
+-  freeifaddrs(addresses);
++  _freeifaddrs(addresses);
+   *network_interfaces = ret;
+ 
+   return OS_OK;

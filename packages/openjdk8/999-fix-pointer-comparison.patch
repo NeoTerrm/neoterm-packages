@@ -1,0 +1,11 @@
+--- ./hotspot/src/share/vm/code/compiledIC.cpp.orig	2021-05-11 04:00:55.618818253 +0000
++++ ./hotspot/src/share/vm/code/compiledIC.cpp	2021-05-11 04:01:23.250356685 +0000
+@@ -222,7 +222,7 @@
+     assert(bytecode == Bytecodes::_invokeinterface, "");
+     int itable_index = call_info->itable_index();
+     entry = VtableStubs::find_itable_stub(itable_index);
+-    if (entry == false) {
++    if (entry == NULL) {
+       return false;
+     }
+ #ifdef ASSERT

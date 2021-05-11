@@ -1,0 +1,11 @@
+--- ./hotspot/src/os_cpu/linux_aarch64/vm/copy_linux_aarch64.s.orig	2021-05-11 04:15:07.344363122 +0000
++++ ./hotspot/src/os_cpu/linux_aarch64/vm/copy_linux_aarch64.s	2021-05-11 04:17:11.335201159 +0000
+@@ -329,7 +329,7 @@
+         blo     unal_bwd_copy_drain
+ 
+ unal_bwd_copy_again:
+-        prfm    pldl1keep, [s, #-256]
++        prfum   pldl1keep, [s, #-256]
+         str     t1, [d, #-8]
+         stp     t3, t0, [d, #-24]
+         ldp     t0, t1, [s, #-16]

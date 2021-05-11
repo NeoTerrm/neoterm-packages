@@ -1,0 +1,203 @@
+From 5c6f594d884e3983fcf6141b2eb2426166c18132 Mon Sep 17 00:00:00 2001
+From: CosineMath <1365471105@qq.com>
+Date: Sat, 14 Nov 2020 19:47:47 +0800
+Subject: [PATCH] Changes on net, nio and sa.
+
+---
+ jdk/make/lib/NetworkingLibraries.gmk          |  3 +-
+ jdk/make/lib/NioLibraries.gmk                 |  6 ++-
+ jdk/make/lib/ServiceabilityLibraries.gmk      |  3 +-
+ .../sun/management/OperatingSystemImpl.c      |  2 +-
+ .../native/sun/nio/fs/UnixNativeDispatcher.c  | 34 ++++++++++++++++
+ .../sun/tools/attach/LinuxVirtualMachine.c    | 40 +++++++++++++++++++
+ 6 files changed, 83 insertions(+), 5 deletions(-)
+
+diff --git a/jdk/make/lib/NetworkingLibraries.gmk b/jdk/make/lib/NetworkingLibraries.gmk
+index 347c323763..d357401485 100644
+--- a/jdk/make/lib/NetworkingLibraries.gmk
++++ b/jdk/make/lib/NetworkingLibraries.gmk
+@@ -58,6 +58,7 @@ else
+       NTLMAuthSequence.c NetworkInterface_winXP.c
+ endif
+ 
++# libpthread.so not available on Android.
+ $(eval $(call SetupNativeCompilation,BUILD_LIBNET, \
+     LIBRARY := net, \
+     OUTPUT_DIR := $(INSTALL_LIBRARIES_HERE), \
+@@ -72,7 +73,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBNET, \
+         $(call SET_SHARED_LIBRARY_ORIGIN), \
+     LDFLAGS_SUFFIX_macosx := -ljvm -ljava, \
+     LDFLAGS_SUFFIX_solaris := -ljvm -ljava -lnsl -lsocket $(LIBDL) -lc, \
+-    LDFLAGS_SUFFIX_linux := $(LIBDL) -ljvm -lpthread -ljava, \
++    LDFLAGS_SUFFIX_linux := $(LIBDL) -ljvm -ljava, \
+     LDFLAGS_SUFFIX_aix := $(LIBDL) -ljvm -ljava,\
+     LDFLAGS_SUFFIX_windows := ws2_32.lib jvm.lib secur32.lib iphlpapi.lib \
+         delayimp.lib $(WIN_JAVA_LIB) advapi32.lib \
+diff --git a/jdk/make/lib/NioLibraries.gmk b/jdk/make/lib/NioLibraries.gmk
+index 6c9c46a3f3..f10dcbe332 100644
+--- a/jdk/make/lib/NioLibraries.gmk
++++ b/jdk/make/lib/NioLibraries.gmk
+@@ -130,6 +130,7 @@ ifeq ($(OPENJDK_TARGET_OS), aix)
+       UnixNativeDispatcher.c
+ endif
+ 
++# libpthread.so not available on Android.
+ $(eval $(call SetupNativeCompilation,BUILD_LIBNIO, \
+     LIBRARY := nio, \
+     OUTPUT_DIR := $(INSTALL_LIBRARIES_HERE), \
+@@ -142,7 +143,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBNIO, \
+     MAPFILE := $(BUILD_LIBNIO_MAPFILE), \
+     LDFLAGS := $(LDFLAGS_JDKLIB) $(BUILD_LIBNIO_LDFLAGS) \
+         $(call SET_SHARED_LIBRARY_ORIGIN), \
+-    LDFLAGS_SUFFIX_linux := -ljava -lnet -lpthread $(LIBDL), \
++    LDFLAGS_SUFFIX_linux := -ljava -lnet $(LIBDL), \
+     LDFLAGS_SUFFIX_aix := -ljava -lnet $(LIBDL),\
+     LDFLAGS_SUFFIX_solaris := -ljvm -lsocket -lposix4 $(LIBDL) \
+         -lsendfile -ljava -lnet -lc, \
+@@ -165,6 +166,7 @@ $(BUILD_LIBNIO): $(BUILD_LIBNET)
+ 
+ ##########################################################################################
+ 
++# libpthread.so not available on Android.
+ ifeq ($(OPENJDK_TARGET_OS_API), posix)
+ 
+   ifeq (, $(filter $(OPENJDK_TARGET_OS), macosx aix))
+@@ -191,7 +193,7 @@ ifeq ($(OPENJDK_TARGET_OS_API), posix)
+         MAPFILE := $(JDK_TOPDIR)/make/mapfiles/libsctp/mapfile-vers, \
+         LDFLAGS := $(LDFLAGS_JDKLIB) \
+             $(call SET_SHARED_LIBRARY_ORIGIN), \
+-        LDFLAGS_SUFFIX_linux := -lpthread $(LIBDL) -ljava -ljvm, \
++        LDFLAGS_SUFFIX_linux := $(LIBDL) -ljava -ljvm, \
+         LDFLAGS_SUFFIX_posix := -lnio -lnet, \
+         LDFLAGS_SUFFIX_solaris := -lsocket -ljava -ljvm -lc, \
+         LDFLAGS_SUFFIX_macosx := -ljava -ljvm, \
+diff --git a/jdk/make/lib/ServiceabilityLibraries.gmk b/jdk/make/lib/ServiceabilityLibraries.gmk
+index 31ffff62b0..ff8a15a203 100644
+--- a/jdk/make/lib/ServiceabilityLibraries.gmk
++++ b/jdk/make/lib/ServiceabilityLibraries.gmk
+@@ -76,6 +76,7 @@ BUILD_LIBRARIES += $(BUILD_LIBATTACH)
+ 
+ ##########################################################################################
+ 
++# libpthread.so not available on Android.
+ $(eval $(call SetupNativeCompilation,BUILD_LIBDT_SOCKET, \
+     LIBRARY := dt_socket, \
+     OUTPUT_DIR := $(INSTALL_LIBRARIES_HERE), \
+@@ -92,7 +93,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBDT_SOCKET, \
+     MAPFILE := $(JDK_TOPDIR)/make/mapfiles/libdt_socket/mapfile-vers, \
+     LDFLAGS := $(LDFLAGS_JDKLIB) \
+         $(call SET_SHARED_LIBRARY_ORIGIN), \
+-    LDFLAGS_SUFFIX_linux := -lpthread, \
++    LDFLAGS_SUFFIX_linux := , \
+     LDFLAGS_SUFFIX_solaris := -lnsl -lsocket -lc, \
+     LDFLAGS_SUFFIX_windows := $(LDFLAGS_JDKLIB_SUFFIX) -export:jdwpTransport_OnLoad ws2_32.lib, \
+     VERSIONINFO_RESOURCE := $(JDK_TOPDIR)/src/windows/resource/version.rc, \
+diff --git a/jdk/src/solaris/native/sun/management/OperatingSystemImpl.c b/jdk/src/solaris/native/sun/management/OperatingSystemImpl.c
+index ec5de2fa3b..173d5c863e 100644
+--- a/jdk/src/solaris/native/sun/management/OperatingSystemImpl.c
++++ b/jdk/src/solaris/native/sun/management/OperatingSystemImpl.c
+@@ -63,7 +63,7 @@
+ 
+ static jlong page_size = 0;
+ 
+-#if defined(_ALLBSD_SOURCE) || defined(_AIX)
++#if defined(_ALLBSD_SOURCE) || defined(_AIX) || defined(__ANDROID__)
+ #define MB      (1024UL * 1024UL)
+ #else
+ 
+diff --git a/jdk/src/solaris/native/sun/nio/fs/UnixNativeDispatcher.c b/jdk/src/solaris/native/sun/nio/fs/UnixNativeDispatcher.c
+index cb4cfc0190..bc4cd63c7f 100644
+--- a/jdk/src/solaris/native/sun/nio/fs/UnixNativeDispatcher.c
++++ b/jdk/src/solaris/native/sun/nio/fs/UnixNativeDispatcher.c
+@@ -1020,6 +1020,40 @@ Java_sun_nio_fs_UnixNativeDispatcher_getpwuid(JNIEnv* env, jclass this, jint uid
+     return result;
+ }
+ 
++#ifdef __ANDROID__
++/*
++ * TODO: Android lacks support for the methods listed below.  In it's place are
++ * alternatives that use existing Android functionality, but lack reentrant
++ * support.  Determine if the following are the most suitable alternatives.
++ *
++ */
++int getgrgid_r(gid_t gid, struct group* grp, char* buf, size_t buflen, struct group** result) {
++
++  *result = NULL;
++  errno = 0;
++  grp = getgrgid(gid);
++  if (grp == NULL) {
++        return errno;
++  }
++  // buf not used by caller (see below)
++  *result = grp;
++  return 0;
++}
++
++int getgrnam_r(const char *name, struct group* grp, char* buf, size_t buflen, struct group** result) {
++
++  *result = NULL;
++  errno = 0;
++  grp = getgrnam(name);
++  if (grp == NULL) {
++        return errno;
++  }
++  // buf not used by caller (see below)
++  *result = grp;
++  return 0;
++
++}
++#endif // __ANDROID__
+ 
+ JNIEXPORT jbyteArray JNICALL
+ Java_sun_nio_fs_UnixNativeDispatcher_getgrgid(JNIEnv* env, jclass this, jint gid)
+diff --git a/jdk/src/solaris/native/sun/tools/attach/LinuxVirtualMachine.c b/jdk/src/solaris/native/sun/tools/attach/LinuxVirtualMachine.c
+index 6017308d0b..73cfebd307 100644
+--- a/jdk/src/solaris/native/sun/tools/attach/LinuxVirtualMachine.c
++++ b/jdk/src/solaris/native/sun/tools/attach/LinuxVirtualMachine.c
+@@ -187,6 +187,46 @@ JNIEXPORT void JNICALL Java_sun_tools_attach_LinuxVirtualMachine_connect
+     }
+ }
+ 
++#ifdef __ANDROID__
++// Copy from glibc 2.31
++
++# ifndef _CS_GNU_LIBC_VERSION
++# define _CS_GNU_LIBC_VERSION 2
++# endif
++# ifndef _CS_GNU_LIBPTHREAD_VERSION
++# define _CS_GNU_LIBPTHREAD_VERSION 3
++# endif
++
++static size_t confstr(int name, char *buf, size_t len) {
++  const char *string = "";
++  size_t string_len = 1;
++  
++  switch (name) {
++    case _CS_GNU_LIBC_VERSION:
++      string = "bionic libc android-21";
++      string_len = sizeof("bionic libc android-21");
++      break;
++
++    case _CS_GNU_LIBPTHREAD_VERSION:
++      string = "bionic libc android-21 NPTL";
++      string_len = sizeof("bionic libc android-21 NPTL");
++      break;
++    default:
++      return 0;
++  }
++  
++  if (len > 0 && buf != NULL) {
++    if (string_len <= len) {
++      memcpy (buf, string, string_len);
++    } else {
++      memcpy (buf, string, len - 1);
++      buf[len - 1] = '\0';
++    }
++  }
++  return string_len;
++}
++#endif
++
+ /*
+  * Class:     sun_tools_attach_LinuxVirtualMachine
+  * Method:    isLinuxThreads

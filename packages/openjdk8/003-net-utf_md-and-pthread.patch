@@ -1,0 +1,385 @@
+From adb00cecb251161d1414588f2ee524072d4ca188 Mon Sep 17 00:00:00 2001
+From: CosineMath <1365471105@qq.com>
+Date: Sat, 14 Nov 2020 19:29:42 +0800
+Subject: [PATCH] Changes on encoding and net for Android.
+
+---
+ jdk/make/lib/CoreLibraries.gmk                |  3 +-
+ .../solaris/instrument/EncodingSupport_md.c   | 28 ++++++++++++-
+ jdk/src/solaris/native/common/jni_util_md.c   |  2 +
+ jdk/src/solaris/native/java/net/net_util_md.c |  7 +++-
+ .../native/sun/nio/ch/DatagramDispatcher.c    |  4 ++
+ jdk/src/solaris/native/sun/nio/ch/Net.c       | 42 ++++++++++++++++++-
+ jdk/src/solaris/npt/utf_md.c                  | 26 +++++++++++-
+ 7 files changed, 107 insertions(+), 5 deletions(-)
+
+diff --git a/jdk/make/lib/CoreLibraries.gmk b/jdk/make/lib/CoreLibraries.gmk
+index a62ce8bb92..ef0779a785 100644
+--- a/jdk/make/lib/CoreLibraries.gmk
++++ b/jdk/make/lib/CoreLibraries.gmk
+@@ -434,6 +434,7 @@ else
+   LIBJLI_OUTPUT_DIR := $(INSTALL_LIBRARIES_HERE)/jli
+ endif
+ 
++# libpthread.so not available on Android.
+ $(eval $(call SetupNativeCompilation,BUILD_LIBJLI, \
+     LIBRARY := jli, \
+     OUTPUT_DIR := $(LIBJLI_OUTPUT_DIR), \
+@@ -449,7 +450,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBJLI, \
+     LDFLAGS_solaris := $(call SET_SHARED_LIBRARY_ORIGIN,/..), \
+     LDFLAGS_macosx := -framework Cocoa -framework Security -framework ApplicationServices, \
+     LDFLAGS_SUFFIX_solaris := $(LIBZ) $(LIBDL) -lc, \
+-    LDFLAGS_SUFFIX_linux := $(LIBZ) $(LIBDL) -lc -lpthread, \
++    LDFLAGS_SUFFIX_linux := $(LIBZ) $(LIBDL) -lc, \
+     LDFLAGS_SUFFIX_aix := $(LIBZ) $(LIBDL),\
+     LDFLAGS_SUFFIX_macosx := $(LIBZ), \
+     LDFLAGS_SUFFIX_windows := \
+diff --git a/jdk/src/solaris/instrument/EncodingSupport_md.c b/jdk/src/solaris/instrument/EncodingSupport_md.c
+index 50bff64139..ebb1dd2fae 100644
+--- a/jdk/src/solaris/instrument/EncodingSupport_md.c
++++ b/jdk/src/solaris/instrument/EncodingSupport_md.c
+@@ -28,8 +28,10 @@
+ #include <string.h>
+ #include <ctype.h>
+ #include <locale.h>
++#ifndef __ANDROID__
+ #include <langinfo.h>
+ #include <iconv.h>
++#endif
+ 
+ /* Routines to convert back and forth between Platform Encoding and UTF-8 */
+ 
+@@ -43,9 +45,11 @@
+ #define UTF_ASSERT(x) ( (x)==0 ? UTF_ERROR("ASSERT ERROR " #x) : (void)0 )
+ #define UTF_DEBUG(x)
+ 
++#ifndef __ANDROID__
+ /* Global variables */
+ static iconv_t iconvToPlatform          = (iconv_t)-1;
+ static iconv_t iconvFromPlatform        = (iconv_t)-1;
++#endif
+ 
+ /*
+  * Error handler
+@@ -69,7 +73,11 @@ utfInitialize(void)
+     (void)setlocale(LC_ALL, "");
+ 
+     /* Get the codeset name */
++    #ifdef __ANDROID__
++    codeset = "UTF-8";
++    #else
+     codeset = (char*)nl_langinfo(CODESET);
++    #endif
+     if ( codeset == NULL || codeset[0] == 0 ) {
+         UTF_DEBUG(("NO codeset returned by nl_langinfo(CODESET)\n"));
+         return;
+@@ -82,7 +90,8 @@ utfInitialize(void)
+         UTF_DEBUG(("NO iconv() being used because it is not needed\n"));
+         return;
+     }
+-
++    
++    #ifndef __ANDROID__
+     /* Open conversion descriptors */
+     iconvToPlatform   = iconv_open(codeset, "UTF-8");
+     if ( iconvToPlatform == (iconv_t)-1 ) {
+@@ -92,6 +101,7 @@ utfInitialize(void)
+     if ( iconvFromPlatform == (iconv_t)-1 ) {
+         UTF_ERROR("Failed to complete iconv_open() setup");
+     }
++    #endif
+ }
+ 
+ /*
+@@ -100,6 +110,7 @@ utfInitialize(void)
+ static void
+ utfTerminate(void)
+ {
++    #ifndef __ANDROID__
+     if ( iconvFromPlatform!=(iconv_t)-1 ) {
+         (void)iconv_close(iconvFromPlatform);
+     }
+@@ -108,8 +119,10 @@ utfTerminate(void)
+     }
+     iconvToPlatform   = (iconv_t)-1;
+     iconvFromPlatform = (iconv_t)-1;
++    #endif
+ }
+ 
++#ifndef __ANDROID__
+ /*
+  * Do iconv() conversion.
+  *    Returns length or -1 if output overflows.
+@@ -155,6 +168,7 @@ iconvConvert(iconv_t ic, char *bytes, int len, char *output, int outputMaxLen)
+     output[len] = 0;
+     return outputLen;
+ }
++#endif // __ANDROID__
+ 
+ /*
+  * Convert UTF-8 to Platform Encoding.
+@@ -163,7 +177,12 @@ iconvConvert(iconv_t ic, char *bytes, int len, char *output, int outputMaxLen)
+ static int
+ utf8ToPlatform(char *utf8, int len, char *output, int outputMaxLen)
+ {
++#ifndef __ANDROID__
+     return iconvConvert(iconvToPlatform, utf8, len, output, outputMaxLen);
++#else
++    strncpy(output, (char *)utf8, outputMaxLen - 1);
++    return strlen(output);
++#endif
+ }
+ 
+ /*
+@@ -173,13 +192,20 @@ utf8ToPlatform(char *utf8, int len, char *output, int outputMaxLen)
+ static int
+ platformToUtf8(char *str, int len, char *output, int outputMaxLen)
+ {
++#ifndef __ANDROID__
+     return iconvConvert(iconvFromPlatform, str, len, output, outputMaxLen);
++#else
++    strncpy((char *)output, str, outputMaxLen - 1);
++    return strlen((char*)output);
++#endif
+ }
+ 
+ int
+ convertUft8ToPlatformString(char* utf8_str, int utf8_len, char* platform_str, int platform_len) {
++#ifndef __ANDROID__
+     if (iconvToPlatform ==  (iconv_t)-1) {
+         utfInitialize();
+     }
++#endif
+     return utf8ToPlatform(utf8_str, utf8_len, platform_str, platform_len);
+ }
+diff --git a/jdk/src/solaris/native/common/jni_util_md.c b/jdk/src/solaris/native/common/jni_util_md.c
+index 598dc41eb0..f335597be4 100644
+--- a/jdk/src/solaris/native/common/jni_util_md.c
++++ b/jdk/src/solaris/native/common/jni_util_md.c
+@@ -37,12 +37,14 @@ char* nativeGetStringPlatformChars(JNIEnv *env, jstring jstr, jboolean *isCopy)
+     return NULL;
+ }
+ 
++#ifndef __ANDROID__
+ #if defined(LINUX) && (defined(_GNU_SOURCE) || \
+          (defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE < 200112L \
+              && defined(_XOPEN_SOURCE) && _XOPEN_SOURCE < 600))
+ extern int __xpg_strerror_r(int, char *, size_t);
+ #define strerror_r(a, b, c) __xpg_strerror_r((a), (b), (c))
+ #endif
++#endif
+ 
+ void* getProcessHandle() {
+     static void *procHandle = NULL;
+diff --git a/jdk/src/solaris/native/java/net/net_util_md.c b/jdk/src/solaris/native/java/net/net_util_md.c
+index bd0bd8c2c9..8ae2a7e5dd 100644
+--- a/jdk/src/solaris/native/java/net/net_util_md.c
++++ b/jdk/src/solaris/native/java/net/net_util_md.c
+@@ -35,12 +35,14 @@
+ #include <dlfcn.h>
+ #include <sys/time.h>
+ 
+-#ifndef _ALLBSD_SOURCE
++#if !defined(_ALLBSD_SOURCE) && !defined(__ANDROID__)
+ #include <values.h>
+ #else
+ #include <limits.h>
+ #include <sys/param.h>
++#ifndef __ANDROID__
+ #include <sys/sysctl.h>
++#endif
+ #ifndef MAXINT
+ #define MAXINT INT_MAX
+ #endif
+@@ -56,6 +58,9 @@
+ #include <arpa/inet.h>
+ #include <net/route.h>
+ #include <sys/utsname.h>
++#ifdef __ANDROID__
++#include <linux/ipv6_route.h>
++#endif
+ 
+ #ifndef IPV6_FLOWINFO_SEND
+ #define IPV6_FLOWINFO_SEND      33
+diff --git a/jdk/src/solaris/native/sun/nio/ch/DatagramDispatcher.c b/jdk/src/solaris/native/sun/nio/ch/DatagramDispatcher.c
+index f9f2391d86..4c31c5b67c 100644
+--- a/jdk/src/solaris/native/sun/nio/ch/DatagramDispatcher.c
++++ b/jdk/src/solaris/native/sun/nio/ch/DatagramDispatcher.c
+@@ -39,6 +39,10 @@
+ #include "nio_util.h"
+ #include <limits.h>
+ 
++#ifdef __ANDROID__
++#define IOV_MAX 1024
++#endif
++
+ JNIEXPORT jint JNICALL
+ Java_sun_nio_ch_DatagramDispatcher_read0(JNIEnv *env, jclass clazz,
+                          jobject fdo, jlong address, jint len)
+diff --git a/jdk/src/solaris/native/sun/nio/ch/Net.c b/jdk/src/solaris/native/sun/nio/ch/Net.c
+index 73560ad6c6..7d2008c718 100644
+--- a/jdk/src/solaris/native/sun/nio/ch/Net.c
++++ b/jdk/src/solaris/native/sun/nio/ch/Net.c
+@@ -55,7 +55,7 @@
+   #endif
+ #endif
+ 
+-#if defined(_ALLBSD_SOURCE) || defined(_AIX)
++#if defined(_ALLBSD_SOURCE) || defined(_AIX) || defined(__ANDROID__)
+ 
+ #ifndef IP_BLOCK_SOURCE
+ 
+@@ -229,6 +229,30 @@ Java_sun_nio_ch_Net_canJoin6WithIPv4Group0(JNIEnv* env, jclass cl)
+ #endif
+ }
+ 
++#ifdef __ANDROID__
++// See comment in Java_sun_nio_ch_Net_socket0
++static void get_set_sockopt(int fd, int opt)
++{
++    int result;
++    void *arg = (void *)&result;
++    socklen_t arglen = sizeof(result);
++    // Since this is android we know that the ProtocolFamily is UNSPEC,
++    // (mayNeedConversion == 1) so call NET_GetSockOpt vs. {get,set}sockopt
++    // and level is 1.
++    // see SocketOptionRegistry-android-{arm,x86}.java
++    int n = NET_GetSockOpt(fd, 1, opt, arg, (int*)&arglen);
++    // Just let the original behavior occur on error, since
++    // this is "special" initialization
++    if (n < 0) {
++        return;
++    }
++    n = NET_SetSockOpt(fd, 1, opt, arg, arglen);
++    if (n < 0) {
++        return;
++    }
++}
++#endif
++
+ JNIEXPORT int JNICALL
+ Java_sun_nio_ch_Net_socket0(JNIEnv *env, jclass cl, jboolean preferIPv6,
+                             jboolean stream, jboolean reuse, jboolean ignored)
+@@ -302,6 +326,22 @@ Java_sun_nio_ch_Net_socket0(JNIEnv *env, jclass cl, jboolean preferIPv6,
+         }
+     }
+ #endif
++
++#ifdef __ANDROID__
++    // JDK-8001645 - JCK failures in java_api/nio/channel
++    // On some devices the initial value returned from
++    // getSocketOption for SO_SNDBUF and SO_RCVBUF can be
++    // greater than the configured system maximum. The jck tests
++    //   api/java_nio/channels/Asynchronous{ServerSocket,Socket}Channel/
++    //          Asynchronous{ServerSocket,Socket}Channel_NetworkChannel
++    // fail because of a test assumption that the initial value for these
++    // options should be less than the maximum value.
++    // In order to pass the test, read the value and then write it.
++    // The system behavior sets the value to the maximum value
++    // if the "hint" is greater than the maximum value.
++    get_set_sockopt(fd, SO_RCVBUF);
++    get_set_sockopt(fd, SO_SNDBUF);
++#endif
+     return fd;
+ }
+ 
+diff --git a/jdk/src/solaris/npt/utf_md.c b/jdk/src/solaris/npt/utf_md.c
+index edd3bc69e1..591bd6fbdb 100644
+--- a/jdk/src/solaris/npt/utf_md.c
++++ b/jdk/src/solaris/npt/utf_md.c
+@@ -27,8 +27,10 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <locale.h>
++#ifndef __ANDROID__
+ #include <langinfo.h>
+ #include <iconv.h>
++#endif
+ 
+ #include "utf.h"
+ 
+@@ -51,7 +53,11 @@ utfInitialize(char *options)
+     (void)setlocale(LC_ALL, "");
+ 
+     /* Get the codeset name */
++    #ifdef __ANDROID__
++    codeset = "UTF-8";
++    #else
+     codeset = (char*)nl_langinfo(CODESET);
++    #endif
+     if ( codeset == NULL || codeset[0] == 0 ) {
+         return ui;
+     }
+@@ -62,6 +68,7 @@ utfInitialize(char *options)
+     }
+ 
+     /* Open conversion descriptors */
++    #ifndef __ANDROID__
+     ui->iconvToPlatform   = iconv_open(codeset, "UTF-8");
+     if ( ui->iconvToPlatform == (void *)-1 ) {
+         UTF_ERROR("Failed to complete iconv_open() setup");
+@@ -70,6 +77,7 @@ utfInitialize(char *options)
+     if ( ui->iconvFromPlatform == (void *)-1 ) {
+         UTF_ERROR("Failed to complete iconv_open() setup");
+     }
++    #endif
+     return ui;
+ }
+ 
+@@ -79,17 +87,20 @@ utfInitialize(char *options)
+ void  JNICALL
+ utfTerminate(struct UtfInst *ui, char *options)
+ {
++    #ifndef __ANDROID__
+     if ( ui->iconvFromPlatform != (void *)-1 ) {
+         (void)iconv_close(ui->iconvFromPlatform);
+     }
+     if ( ui->iconvToPlatform != (void *)-1 ) {
+         (void)iconv_close(ui->iconvToPlatform);
+     }
++    #endif
+     ui->iconvToPlatform   = (void *)-1;
+     ui->iconvFromPlatform = (void *)-1;
+     (void)free(ui);
+ }
+ 
++#ifndef __ANDROID__
+ /*
+  * Do iconv() conversion.
+  *    Returns length or -1 if output overflows.
+@@ -135,6 +146,7 @@ iconvConvert(iconv_t ic, char *bytes, int len, char *output, int outputMaxLen)
+     output[len] = 0;
+     return outputLen;
+ }
++#endif
+ 
+ /*
+  * Convert UTF-8 to Platform Encoding.
+@@ -153,8 +165,14 @@ utf8ToPlatform(struct UtfInst*ui, jbyte *utf8, int len, char *output, int output
+         output[0] = 0;
+         return 0;
+     }
+-
++    
++    #ifndef __ANDROID__
+     return iconvConvert(ui->iconvToPlatform, (char*)utf8, len, output, outputMaxLen);
++    #else
++    //Just copy without any conversion.
++    strncpy((char *)output, (char *)utf8, outputMaxLen - 1);
++    return strlen((char*)output);
++    #endif
+ }
+ 
+ /*
+@@ -175,5 +193,11 @@ utf8FromPlatform(struct UtfInst*ui, char *str, int len, jbyte *output, int outpu
+         return 0;
+     }
+ 
++    #ifndef __ANDROID__
+     return iconvConvert(ui->iconvFromPlatform, str, len, (char*)output, outputMaxLen);
++    #else
++    //Just copy without any conversion.
++    strncpy((char *)output, str, outputMaxLen - 1);
++    return strlen((char*)output);
++    #endif
+ }

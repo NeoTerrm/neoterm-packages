@@ -1,0 +1,907 @@
+From 295bfc5a92246be4f8cbe6ffc71796921253f121 Mon Sep 17 00:00:00 2001
+From: CosineMath <1365471105@qq.com>
+Date: Sat, 14 Nov 2020 00:48:13 +0800
+Subject: [PATCH] Changes on hotspot for Android. Disable SA building for
+ Android. Some other changes.
+
+---
+ hotspot/make/linux/makefiles/defs.make     |   6 +-
+ hotspot/make/linux/makefiles/gcc.make      |   3 +-
+ hotspot/make/linux/makefiles/saproc.make   |   3 +-
+ hotspot/make/linux/makefiles/vm.make       |   3 +-
+ hotspot/src/os/linux/vm/os_linux.cpp       |  82 ++-
+ hotspot/src/os/linux/vm/os_perf_linux.cpp  | 602 +++++++++++++++++++++
+ hotspot/src/share/vm/utilities/elfFile.hpp |   4 +
+ 7 files changed, 696 insertions(+), 7 deletions(-)
+
+diff --git a/hotspot/make/linux/makefiles/defs.make b/hotspot/make/linux/makefiles/defs.make
+index 9aebd998d2..6eb96b948c 100644
+--- a/hotspot/make/linux/makefiles/defs.make
++++ b/hotspot/make/linux/makefiles/defs.make
+@@ -305,12 +305,13 @@ endif
+ 
+ # Serviceability Binaries
+ # No SA Support for PPC, IA64, ARM or zero
++# No SA Support for AArch64 on Android
+ ADD_SA_BINARIES/x86   = $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.$(LIBRARY_SUFFIX) \
+                         $(EXPORT_LIB_DIR)/sa-jdi.jar
+ ADD_SA_BINARIES/sparc = $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.$(LIBRARY_SUFFIX) \
+                         $(EXPORT_LIB_DIR)/sa-jdi.jar
+-ADD_SA_BINARIES/aarch64 = $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.$(LIBRARY_SUFFIX) \
+-                        $(EXPORT_LIB_DIR)/sa-jdi.jar
++# ADD_SA_BINARIES/aarch64 = $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.$(LIBRARY_SUFFIX) \
++#                         $(EXPORT_LIB_DIR)/sa-jdi.jar
+ ifeq ($(ENABLE_FULL_DEBUG_SYMBOLS),1)
+   ifneq ($(STRIP_POLICY),no_strip)
+     ifeq ($(ZIP_DEBUGINFO_FILES),1)
+@@ -326,6 +327,7 @@ ADD_SA_BINARIES/ppc   =
+ ADD_SA_BINARIES/ia64  =
+ ADD_SA_BINARIES/arm   =
+ ADD_SA_BINARIES/zero  =
++ADD_SA_BINARIES/aarch64  =
+ 
+ -include $(HS_ALT_MAKE)/linux/makefiles/defs.make
+ 
+diff --git a/hotspot/make/linux/makefiles/gcc.make b/hotspot/make/linux/makefiles/gcc.make
+index ad22a5e5ca..749a2bca9b 100644
+--- a/hotspot/make/linux/makefiles/gcc.make
++++ b/hotspot/make/linux/makefiles/gcc.make
+@@ -202,7 +202,8 @@ else
+ endif
+ 
+ # Compiler warnings are treated as errors
+-WARNINGS_ARE_ERRORS = -Werror
++# Disable -Werror. Enable -Werror=implicit-function-declaration
++WARNINGS_ARE_ERRORS = -Werror=implicit-function-declaration
+ 
+ ifeq ($(USE_CLANG), true)
+   # However we need to clean the code up before we can unrestrictedly enable this option with Clang
+diff --git a/hotspot/make/linux/makefiles/saproc.make b/hotspot/make/linux/makefiles/saproc.make
+index ffc0ec5ce5..28ce19b69e 100644
+--- a/hotspot/make/linux/makefiles/saproc.make
++++ b/hotspot/make/linux/makefiles/saproc.make
+@@ -66,9 +66,10 @@ endif
+ 
+ # if $(AGENT_DIR) does not exist, we don't build SA
+ # also, we don't build SA on Itanium or zero.
++# Also, we don't build SA on AArch64 for Android
+ 
+ ifneq ($(wildcard $(AGENT_DIR)),)
+-ifneq ($(filter-out ia64 zero,$(SRCARCH)),)
++ifneq ($(filter-out aarch64 ia64 zero,$(SRCARCH)),)
+   BUILDLIBSAPROC = $(LIBSAPROC)
+ endif
+ endif
+diff --git a/hotspot/make/linux/makefiles/vm.make b/hotspot/make/linux/makefiles/vm.make
+index 1985db0716..c705bef0c2 100644
+--- a/hotspot/make/linux/makefiles/vm.make
++++ b/hotspot/make/linux/makefiles/vm.make
+@@ -130,7 +130,8 @@ ASFLAGS += $(EXTRA_ASFLAGS)
+ # the same could be done by separate execstack command
+ LFLAGS += -Xlinker -z -Xlinker noexecstack
+ 
+-LIBS += -lm -ldl -lpthread
++# libpthread.so not available on Android.
++LIBS += -lm -ldl
+ 
+ # By default, link the *.o into the library, not the executable.
+ LINK_INTO$(LINK_INTO) = LIBJVM
+diff --git a/hotspot/src/os/linux/vm/os_linux.cpp b/hotspot/src/os/linux/vm/os_linux.cpp
+index 5e0c18e6b0..9658fa8042 100644
+--- a/hotspot/src/os/linux/vm/os_linux.cpp
++++ b/hotspot/src/os/linux/vm/os_linux.cpp
+@@ -95,7 +95,9 @@
+ # include <string.h>
+ # include <syscall.h>
+ # include <sys/sysinfo.h>
++#ifndef __ANDROID__
+ # include <gnu/libc-version.h>
++#endif
+ # include <sys/ipc.h>
+ # include <sys/shm.h>
+ # include <link.h>
+@@ -578,6 +580,50 @@ void os::Linux::hotspot_sigmask(Thread* thread) {
+ }
+ 
+ //////////////////////////////////////////////////////////////////////////////
++// Copy from glibc 2.31
++
++# ifndef _CS_GNU_LIBC_VERSION
++# define _CS_GNU_LIBC_VERSION 2
++# endif
++# ifndef _CS_GNU_LIBPTHREAD_VERSION
++# define _CS_GNU_LIBPTHREAD_VERSION 3
++# endif
++
++static size_t confstr(int name, char *buf, size_t len) {
++  const char *string = "";
++  size_t string_len = 1;
++  
++  switch (name) {
++    case _CS_GNU_LIBC_VERSION:
++      string = "bionic libc android-21";
++      string_len = sizeof("bionic libc android-21");
++      break;
++
++    case _CS_GNU_LIBPTHREAD_VERSION:
++      string = "bionic libc android-21 NPTL";
++      string_len = sizeof("bionic libc android-21 NPTL");
++      break;
++    default:
++      return 0;
++  }
++  
++  if (len > 0 && buf != NULL) {
++    if (string_len <= len) {
++      memcpy (buf, string, string_len);
++    } else {
++      memcpy (buf, string, len - 1);
++      buf[len - 1] = '\0';
++    }
++  }
++  return string_len;
++}
++
++const char* gnu_get_libc_version() {
++  return "0";
++}
++const char* gnu_get_libc_release() {
++  return "0";
++}
+ // detecting pthread library
+ 
+ void os::Linux::libpthread_init() {
+@@ -2978,17 +3024,25 @@ extern "C" JNIEXPORT int fork1() { return fork(); }
+ // Handle request to load libnuma symbol version 1.1 (API v1). If it fails
+ // load symbol from base version instead.
+ void* os::Linux::libnuma_dlsym(void* handle, const char *name) {
++#ifndef __ANDROID__
+   void *f = dlvsym(handle, name, "libnuma_1.1");
+   if (f == NULL) {
+     f = dlsym(handle, name);
+   }
+   return f;
++#else
++  return dlsym(handle, name);
++#endif
+ }
+ 
+ // Handle request to load libnuma symbol version 1.2 (API v2) only.
+ // Return NULL if the symbol is not defined in this particular version.
+ void* os::Linux::libnuma_v2_dlsym(void* handle, const char* name) {
++#ifndef __ANDROID__
+   return dlvsym(handle, name, "libnuma_1.2");
++#else
++  return NULL;
++#endif
+ }
+ 
+ bool os::Linux::libnuma_init() {
+@@ -3628,6 +3682,9 @@ void os::large_page_init() {
+ #define SHM_HUGETLB 04000
+ #endif
+ 
++// android not support shm
++#ifndef __ANDROID__
++
+ #define shm_warning_format(format, ...)              \
+   do {                                               \
+     if (UseLargePages &&                             \
+@@ -3719,8 +3776,12 @@ static char* shmat_large_pages(int shmid, size_t bytes, size_t alignment, char*
+     return shmat_at_address(shmid, NULL);
+   }
+ }
++#endif //__ANDROID__ : android not support shm
+ 
+ char* os::Linux::reserve_memory_special_shm(size_t bytes, size_t alignment, char* req_addr, bool exec) {
++  char* addr = NULL;
++// android not support shm
++#ifndef __ANDROID__
+   // "exec" is passed in but not used.  Creating the shared image for
+   // the code cache doesn't have an SHM_X executable permission to check.
+   assert(UseLargePages && UseSHM, "only for SHM large pages");
+@@ -3754,14 +3815,16 @@ char* os::Linux::reserve_memory_special_shm(size_t bytes, size_t alignment, char
+   }
+ 
+   // Attach to the region.
+-  char* addr = shmat_large_pages(shmid, bytes, alignment, req_addr);
++  addr = shmat_large_pages(shmid, bytes, alignment, req_addr);
+ 
+   // Remove shmid. If shmat() is successful, the actual shared memory segment
+   // will be deleted when it's detached by shmdt() or when the process
+   // terminates. If shmat() is not successful this will remove the shared
+   // segment immediately.
+   shmctl(shmid, IPC_RMID, NULL);
+-
++#else
++  assert(0, "SHM not supported on this platform");
++#endif //__ANDROID__ : android not support shm
+   return addr;
+ }
+ 
+@@ -3907,6 +3970,9 @@ char* os::reserve_memory_special(size_t bytes, size_t alignment, char* req_addr,
+ 
+   char* addr;
+   if (UseSHM) {
++#ifdef __ANDROID__
++    assert(0, "UseSHM not supported on this platform");
++#endif // __ANDROID__ : android not support shm
+     addr = os::Linux::reserve_memory_special_shm(bytes, alignment, req_addr, exec);
+   } else {
+     assert(UseHugeTLBFS, "must be");
+@@ -3926,8 +3992,13 @@ char* os::reserve_memory_special(size_t bytes, size_t alignment, char* req_addr,
+ }
+ 
+ bool os::Linux::release_memory_special_shm(char* base, size_t bytes) {
++#ifndef __ANDROID__
+   // detaching the SHM segment will also delete it, see reserve_memory_special_shm()
+   return shmdt(base) == 0;
++#else
++  assert(0, "SHM not supported on this platform");
++  return false;
++#endif // __ANDROID__ : android not support shm
+ }
+ 
+ bool os::Linux::release_memory_special_huge_tlbfs(char* base, size_t bytes) {
+@@ -3954,6 +4025,9 @@ bool os::Linux::release_memory_special_impl(char* base, size_t bytes) {
+   bool res;
+ 
+   if (UseSHM) {
++#ifdef __ANDROID__
++    assert(0, "UseSHM not supported on this platform");
++#endif //__ANDROID__ : android not support shm
+     res = os::Linux::release_memory_special_shm(base, bytes);
+   } else {
+     assert(UseHugeTLBFS, "must be");
+@@ -5886,7 +5960,11 @@ bool os::is_thread_cpu_time_supported() {
+ // Linux doesn't yet have a (official) notion of processor sets,
+ // so just return the system wide load average.
+ int os::loadavg(double loadavg[], int nelem) {
++#ifndef __ANDROID__
+   return ::getloadavg(loadavg, nelem);
++#else
++  return -1;
++#endif
+ }
+ 
+ void os::pause() {
+diff --git a/hotspot/src/os/linux/vm/os_perf_linux.cpp b/hotspot/src/os/linux/vm/os_perf_linux.cpp
+index 0d1f75810a..af61f5cf3f 100644
+--- a/hotspot/src/os/linux/vm/os_perf_linux.cpp
++++ b/hotspot/src/os/linux/vm/os_perf_linux.cpp
+@@ -1103,6 +1103,608 @@ int64_t NetworkPerformanceInterface::NetworkPerformance::read_counter(const char
+   return value;
+ }
+ 
++#ifdef __ANDROID__
++
++/*
++Copyright (c) 2013, Kenneth MacKay
++All rights reserved.
++Redistribution and use in source and binary forms, with or without modification,
++are permitted provided that the following conditions are met:
++ * Redistributions of source code must retain the above copyright notice, this
++   list of conditions and the following disclaimer.
++ * Redistributions in binary form must reproduce the above copyright notice,
++   this list of conditions and the following disclaimer in the documentation
++   and/or other materials provided with the distribution.
++THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
++ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
++ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++*/
++
++#include "ifaddrs.h"
++
++#include <string.h>
++#include <stdlib.h>
++#include <errno.h>
++#include <unistd.h>
++#include <sys/socket.h>
++#include <net/if_arp.h>
++#include <netinet/in.h>
++#include <linux/netlink.h>
++#include <linux/rtnetlink.h>
++
++typedef struct NetlinkList
++{
++    struct NetlinkList *m_next;
++    struct nlmsghdr *m_data;
++    unsigned int m_size;
++} NetlinkList;
++
++static int netlink_socket(void)
++{
++    int l_socket = socket(PF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
++    if(l_socket < 0)
++    {
++        return -1;
++    }
++    
++    struct sockaddr_nl l_addr;
++    memset(&l_addr, 0, sizeof(l_addr));
++    l_addr.nl_family = AF_NETLINK;
++    if(bind(l_socket, (struct sockaddr *)&l_addr, sizeof(l_addr)) < 0)
++    {
++        close(l_socket);
++        return -1;
++    }
++    
++    return l_socket;
++}
++
++static int netlink_send(int p_socket, int p_request)
++{
++    char l_buffer[NLMSG_ALIGN(sizeof(struct nlmsghdr)) + NLMSG_ALIGN(sizeof(struct rtgenmsg))];
++    memset(l_buffer, 0, sizeof(l_buffer));
++    struct nlmsghdr *l_hdr = (struct nlmsghdr *)l_buffer;
++    struct rtgenmsg *l_msg = (struct rtgenmsg *)NLMSG_DATA(l_hdr);
++    
++    l_hdr->nlmsg_len = NLMSG_LENGTH(sizeof(*l_msg));
++    l_hdr->nlmsg_type = p_request;
++    l_hdr->nlmsg_flags = NLM_F_ROOT | NLM_F_MATCH | NLM_F_REQUEST;
++    l_hdr->nlmsg_pid = 0;
++    l_hdr->nlmsg_seq = p_socket;
++    l_msg->rtgen_family = AF_UNSPEC;
++    
++    struct sockaddr_nl l_addr;
++    memset(&l_addr, 0, sizeof(l_addr));
++    l_addr.nl_family = AF_NETLINK;
++    return (sendto(p_socket, l_hdr, l_hdr->nlmsg_len, 0, (struct sockaddr *)&l_addr, sizeof(l_addr)));
++}
++
++static int netlink_recv(int p_socket, void *p_buffer, size_t p_len)
++{
++    struct msghdr l_msg;
++    struct iovec l_iov = { p_buffer, p_len };
++    struct sockaddr_nl l_addr;
++    int l_result;
++
++    for(;;)
++    {
++        l_msg.msg_name = (void *)&l_addr;
++        l_msg.msg_namelen = sizeof(l_addr);
++        l_msg.msg_iov = &l_iov;
++        l_msg.msg_iovlen = 1;
++        l_msg.msg_control = NULL;
++        l_msg.msg_controllen = 0;
++        l_msg.msg_flags = 0;
++        int l_result = recvmsg(p_socket, &l_msg, 0);
++        
++        if(l_result < 0)
++        {
++            if(errno == EINTR)
++            {
++                continue;
++            }
++            return -2;
++        }
++        
++        if(l_msg.msg_flags & MSG_TRUNC)
++        { // buffer was too small
++            return -1;
++        }
++        return l_result;
++    }
++}
++
++static struct nlmsghdr *getNetlinkResponse(int p_socket, int *p_size, int *p_done)
++{
++    size_t l_size = 4096;
++    void *l_buffer = NULL;
++    
++    for(;;)
++    {
++        free(l_buffer);
++        l_buffer = malloc(l_size);
++        
++        int l_read = netlink_recv(p_socket, l_buffer, l_size);
++        *p_size = l_read;
++        if(l_read == -2)
++        {
++            free(l_buffer);
++            return NULL;
++        }
++        if(l_read >= 0)
++        {
++            pid_t l_pid = getpid();
++            struct nlmsghdr *l_hdr;
++            for(l_hdr = (struct nlmsghdr *)l_buffer; NLMSG_OK(l_hdr, (unsigned int)l_read); l_hdr = (struct nlmsghdr *)NLMSG_NEXT(l_hdr, l_read))
++            {
++                if((pid_t)l_hdr->nlmsg_pid != l_pid || (int)l_hdr->nlmsg_seq != p_socket)
++                {
++                    continue;
++                }
++                
++                if(l_hdr->nlmsg_type == NLMSG_DONE)
++                {
++                    *p_done = 1;
++                    break;
++                }
++                
++                if(l_hdr->nlmsg_type == NLMSG_ERROR)
++                {
++                    free(l_buffer);
++                    return NULL;
++                }
++            }
++            return (nlmsghdr*)l_buffer;
++        }
++        
++        l_size *= 2;
++    }
++}
++
++static NetlinkList *newListItem(struct nlmsghdr *p_data, unsigned int p_size)
++{
++    NetlinkList *l_item = (NetlinkList*)malloc(sizeof(NetlinkList));
++    l_item->m_next = NULL;
++    l_item->m_data = p_data;
++    l_item->m_size = p_size;
++    return l_item;
++}
++
++static void freeResultList(NetlinkList *p_list)
++{
++    NetlinkList *l_cur;
++    while(p_list)
++    {
++        l_cur = p_list;
++        p_list = p_list->m_next;
++        free(l_cur->m_data);
++        free(l_cur);
++    }
++}
++
++static NetlinkList *getResultList(int p_socket, int p_request)
++{
++    if(netlink_send(p_socket, p_request) < 0)
++    {
++        return NULL;
++    }
++
++    NetlinkList *l_list = NULL;
++    NetlinkList *l_end = NULL;
++    int l_size;
++    int l_done = 0;
++    while(!l_done)
++    {
++        struct nlmsghdr *l_hdr = getNetlinkResponse(p_socket, &l_size, &l_done);
++        if(!l_hdr)
++        { // error
++            freeResultList(l_list);
++            return NULL;
++        }
++        
++        NetlinkList *l_item = newListItem(l_hdr, l_size);
++        if(!l_list)
++        {
++            l_list = l_item;
++        }
++        else
++        {
++            l_end->m_next = l_item;
++        }
++        l_end = l_item;
++    }
++    return l_list;
++}
++
++static size_t maxSize(size_t a, size_t b)
++{
++    return (a > b ? a : b);
++}
++
++static size_t calcAddrLen(sa_family_t p_family, int p_dataSize)
++{
++    switch(p_family)
++    {
++        case AF_INET:
++            return sizeof(struct sockaddr_in);
++        case AF_INET6:
++            return sizeof(struct sockaddr_in6);
++        case AF_PACKET:
++            return maxSize(sizeof(struct sockaddr_ll), offsetof(struct sockaddr_ll, sll_addr) + p_dataSize);
++        default:
++            return maxSize(sizeof(struct sockaddr), offsetof(struct sockaddr, sa_data) + p_dataSize);
++    }
++}
++
++static void makeSockaddr(sa_family_t p_family, struct sockaddr *p_dest, void *p_data, size_t p_size)
++{
++    switch(p_family)
++    {
++        case AF_INET:
++            memcpy(&((struct sockaddr_in*)p_dest)->sin_addr, p_data, p_size);
++            break;
++        case AF_INET6:
++            memcpy(&((struct sockaddr_in6*)p_dest)->sin6_addr, p_data, p_size);
++            break;
++        case AF_PACKET:
++            memcpy(((struct sockaddr_ll*)p_dest)->sll_addr, p_data, p_size);
++            ((struct sockaddr_ll*)p_dest)->sll_halen = p_size;
++            break;
++        default:
++            memcpy(p_dest->sa_data, p_data, p_size);
++            break;
++    }
++    p_dest->sa_family = p_family;
++}
++
++static void addToEnd(struct ifaddrs **p_resultList, struct ifaddrs *p_entry)
++{
++    if(!*p_resultList)
++    {
++        *p_resultList = p_entry;
++    }
++    else
++    {
++        struct ifaddrs *l_cur = *p_resultList;
++        while(l_cur->ifa_next)
++        {
++            l_cur = l_cur->ifa_next;
++        }
++        l_cur->ifa_next = p_entry;
++    }
++}
++
++static void interpretLink(struct nlmsghdr *p_hdr, struct ifaddrs **p_links, struct ifaddrs **p_resultList)
++{
++    struct ifinfomsg *l_info = (struct ifinfomsg *)NLMSG_DATA(p_hdr);
++
++    size_t l_nameSize = 0;
++    size_t l_addrSize = 0;
++    size_t l_dataSize = 0;
++    
++    size_t l_rtaSize = NLMSG_PAYLOAD(p_hdr, sizeof(struct ifinfomsg));
++    struct rtattr *l_rta;
++    for(l_rta = (struct rtattr *)(((char *)l_info) + NLMSG_ALIGN(sizeof(struct ifinfomsg))); RTA_OK(l_rta, l_rtaSize); l_rta = RTA_NEXT(l_rta, l_rtaSize))
++    {
++        void *l_rtaData = RTA_DATA(l_rta);
++        size_t l_rtaDataSize = RTA_PAYLOAD(l_rta);
++        switch(l_rta->rta_type)
++        {
++            case IFLA_ADDRESS:
++            case IFLA_BROADCAST:
++                l_addrSize += NLMSG_ALIGN(calcAddrLen(AF_PACKET, l_rtaDataSize));
++                break;
++            case IFLA_IFNAME:
++                l_nameSize += NLMSG_ALIGN(l_rtaSize + 1);
++                break;
++            case IFLA_STATS:
++                l_dataSize += NLMSG_ALIGN(l_rtaSize);
++                break;
++            default:
++                break;
++        }
++    }
++    
++    struct ifaddrs *l_entry = (struct ifaddrs *)malloc(sizeof(struct ifaddrs) + l_nameSize + l_addrSize + l_dataSize);
++    memset(l_entry, 0, sizeof(struct ifaddrs));
++    l_entry->ifa_name = "";
++    
++    char *l_name = ((char *)l_entry) + sizeof(struct ifaddrs);
++    char *l_addr = l_name + l_nameSize;
++    char *l_data = l_addr + l_addrSize;
++    
++    l_entry->ifa_flags = l_info->ifi_flags;
++    
++    l_rtaSize = NLMSG_PAYLOAD(p_hdr, sizeof(struct ifinfomsg));
++    for(l_rta = (struct rtattr *)(((char *)l_info) + NLMSG_ALIGN(sizeof(struct ifinfomsg))); RTA_OK(l_rta, l_rtaSize); l_rta = RTA_NEXT(l_rta, l_rtaSize))
++    {
++        void *l_rtaData = RTA_DATA(l_rta);
++        size_t l_rtaDataSize = RTA_PAYLOAD(l_rta);
++        switch(l_rta->rta_type)
++        {
++            case IFLA_ADDRESS:
++            case IFLA_BROADCAST:
++            {
++                size_t l_addrLen = calcAddrLen(AF_PACKET, l_rtaDataSize);
++                makeSockaddr(AF_PACKET, (struct sockaddr *)l_addr, l_rtaData, l_rtaDataSize);
++                ((struct sockaddr_ll *)l_addr)->sll_ifindex = l_info->ifi_index;
++                ((struct sockaddr_ll *)l_addr)->sll_hatype = l_info->ifi_type;
++                if(l_rta->rta_type == IFLA_ADDRESS)
++                {
++                    l_entry->ifa_addr = (struct sockaddr *)l_addr;
++                }
++                else
++                {
++                    l_entry->ifa_broadaddr = (struct sockaddr *)l_addr;
++                }
++                l_addr += NLMSG_ALIGN(l_addrLen);
++                break;
++            }
++            case IFLA_IFNAME:
++                strncpy(l_name, (const char*)l_rtaData, l_rtaDataSize);
++                l_name[l_rtaDataSize] = '\0';
++                l_entry->ifa_name = l_name;
++                break;
++            case IFLA_STATS:
++                memcpy(l_data, l_rtaData, l_rtaDataSize);
++                l_entry->ifa_data = l_data;
++                break;
++            default:
++                break;
++        }
++    }
++    
++    addToEnd(p_resultList, l_entry);
++    p_links[l_info->ifi_index - 1] = l_entry;
++}
++
++static void interpretAddr(struct nlmsghdr *p_hdr, struct ifaddrs **p_links, struct ifaddrs **p_resultList)
++{
++    struct ifaddrmsg *l_info = (struct ifaddrmsg *)NLMSG_DATA(p_hdr);
++
++    size_t l_nameSize = 0;
++    size_t l_addrSize = 0;
++    
++    int l_addedNetmask = 0;
++    
++    size_t l_rtaSize = NLMSG_PAYLOAD(p_hdr, sizeof(struct ifaddrmsg));
++    struct rtattr *l_rta;
++    for(l_rta = (struct rtattr *)(((char *)l_info) + NLMSG_ALIGN(sizeof(struct ifaddrmsg))); RTA_OK(l_rta, l_rtaSize); l_rta = RTA_NEXT(l_rta, l_rtaSize))
++    {
++        void *l_rtaData = RTA_DATA(l_rta);
++        size_t l_rtaDataSize = RTA_PAYLOAD(l_rta);
++        if(l_info->ifa_family == AF_PACKET)
++        {
++            continue;
++        }
++        
++        switch(l_rta->rta_type)
++        {
++            case IFA_ADDRESS:
++            case IFA_LOCAL:
++                if((l_info->ifa_family == AF_INET || l_info->ifa_family == AF_INET6) && !l_addedNetmask)
++                { // make room for netmask
++                    l_addrSize += NLMSG_ALIGN(calcAddrLen(l_info->ifa_family, l_rtaDataSize));
++                    l_addedNetmask = 1;
++                }
++            case IFA_BROADCAST:
++                l_addrSize += NLMSG_ALIGN(calcAddrLen(l_info->ifa_family, l_rtaDataSize));
++                break;
++            case IFA_LABEL:
++                l_nameSize += NLMSG_ALIGN(l_rtaSize + 1);
++                break;
++            default:
++                break;
++        }
++    }
++    
++    struct ifaddrs *l_entry = (struct ifaddrs*)malloc(sizeof(struct ifaddrs) + l_nameSize + l_addrSize);
++    memset(l_entry, 0, sizeof(struct ifaddrs));
++    l_entry->ifa_name = p_links[l_info->ifa_index - 1]->ifa_name;
++    
++    char *l_name = ((char *)l_entry) + sizeof(struct ifaddrs);
++    char *l_addr = l_name + l_nameSize;
++    
++    l_entry->ifa_flags = l_info->ifa_flags | p_links[l_info->ifa_index - 1]->ifa_flags;
++    
++    l_rtaSize = NLMSG_PAYLOAD(p_hdr, sizeof(struct ifaddrmsg));
++    for(l_rta = (struct rtattr *)(((char *)l_info) + NLMSG_ALIGN(sizeof(struct ifaddrmsg))); RTA_OK(l_rta, l_rtaSize); l_rta = RTA_NEXT(l_rta, l_rtaSize))
++    {
++        void *l_rtaData = RTA_DATA(l_rta);
++        size_t l_rtaDataSize = RTA_PAYLOAD(l_rta);
++        switch(l_rta->rta_type)
++        {
++            case IFA_ADDRESS:
++            case IFA_BROADCAST:
++            case IFA_LOCAL:
++            {
++                size_t l_addrLen = calcAddrLen(l_info->ifa_family, l_rtaDataSize);
++                makeSockaddr(l_info->ifa_family, (struct sockaddr *)l_addr, l_rtaData, l_rtaDataSize);
++                if(l_info->ifa_family == AF_INET6)
++                {
++                    if(IN6_IS_ADDR_LINKLOCAL((struct in6_addr *)l_rtaData) || IN6_IS_ADDR_MC_LINKLOCAL((struct in6_addr *)l_rtaData))
++                    {
++                        ((struct sockaddr_in6 *)l_addr)->sin6_scope_id = l_info->ifa_index;
++                    }
++                }
++                
++                if(l_rta->rta_type == IFA_ADDRESS)
++                { // apparently in a point-to-point network IFA_ADDRESS contains the dest address and IFA_LOCAL contains the local address
++                    if(l_entry->ifa_addr)
++                    {
++                        l_entry->ifa_dstaddr = (struct sockaddr *)l_addr;
++                    }
++                    else
++                    {
++                        l_entry->ifa_addr = (struct sockaddr *)l_addr;
++                    }
++                }
++                else if(l_rta->rta_type == IFA_LOCAL)
++                {
++                    if(l_entry->ifa_addr)
++                    {
++                        l_entry->ifa_dstaddr = l_entry->ifa_addr;
++                    }
++                    l_entry->ifa_addr = (struct sockaddr *)l_addr;
++                }
++                else
++                {
++                    l_entry->ifa_broadaddr = (struct sockaddr *)l_addr;
++                }
++                l_addr += NLMSG_ALIGN(l_addrLen);
++                break;
++            }
++            case IFA_LABEL:
++                strncpy(l_name, (const char*)l_rtaData, l_rtaDataSize);
++                l_name[l_rtaDataSize] = '\0';
++                l_entry->ifa_name = l_name;
++                break;
++            default:
++                break;
++        }
++    }
++    
++    if(l_entry->ifa_addr && (l_entry->ifa_addr->sa_family == AF_INET || l_entry->ifa_addr->sa_family == AF_INET6))
++    {
++        unsigned l_maxPrefix = (l_entry->ifa_addr->sa_family == AF_INET ? 32 : 128);
++        unsigned l_prefix = (l_info->ifa_prefixlen > l_maxPrefix ? l_maxPrefix : l_info->ifa_prefixlen);
++        char l_mask[16] = {0};
++        unsigned i;
++        for(i=0; i<(l_prefix/8); ++i)
++        {
++            l_mask[i] = 0xff;
++        }
++        l_mask[i] = 0xff << (8 - (l_prefix % 8));
++        
++        makeSockaddr(l_entry->ifa_addr->sa_family, (struct sockaddr *)l_addr, l_mask, l_maxPrefix / 8);
++        l_entry->ifa_netmask = (struct sockaddr *)l_addr;
++    }
++    
++    addToEnd(p_resultList, l_entry);
++}
++
++static void interpret(int p_socket, NetlinkList *p_netlinkList, struct ifaddrs **p_links, struct ifaddrs **p_resultList)
++{
++    pid_t l_pid = getpid();
++    for(; p_netlinkList; p_netlinkList = p_netlinkList->m_next)
++    {
++        unsigned int l_nlsize = p_netlinkList->m_size;
++        struct nlmsghdr *l_hdr;
++        for(l_hdr = p_netlinkList->m_data; NLMSG_OK(l_hdr, l_nlsize); l_hdr = NLMSG_NEXT(l_hdr, l_nlsize))
++        {
++            if((pid_t)l_hdr->nlmsg_pid != l_pid || (int)l_hdr->nlmsg_seq != p_socket)
++            {
++                continue;
++            }
++            
++            if(l_hdr->nlmsg_type == NLMSG_DONE)
++            {
++                break;
++            }
++            
++            if(l_hdr->nlmsg_type == RTM_NEWLINK)
++            {
++                interpretLink(l_hdr, p_links, p_resultList);
++            }
++            else if(l_hdr->nlmsg_type == RTM_NEWADDR)
++            {
++                interpretAddr(l_hdr, p_links, p_resultList);
++            }
++        }
++    }
++}
++
++static unsigned countLinks(int p_socket, NetlinkList *p_netlinkList)
++{
++    unsigned l_links = 0;
++    pid_t l_pid = getpid();
++    for(; p_netlinkList; p_netlinkList = p_netlinkList->m_next)
++    {
++        unsigned int l_nlsize = p_netlinkList->m_size;
++        struct nlmsghdr *l_hdr;
++        for(l_hdr = p_netlinkList->m_data; NLMSG_OK(l_hdr, l_nlsize); l_hdr = NLMSG_NEXT(l_hdr, l_nlsize))
++        {
++            if((pid_t)l_hdr->nlmsg_pid != l_pid || (int)l_hdr->nlmsg_seq != p_socket)
++            {
++                continue;
++            }
++            
++            if(l_hdr->nlmsg_type == NLMSG_DONE)
++            {
++                break;
++            }
++            
++            if(l_hdr->nlmsg_type == RTM_NEWLINK)
++            {
++                ++l_links;
++            }
++        }
++    }
++    
++    return l_links;
++}
++
++static int getifaddrs(struct ifaddrs **ifap)
++{
++    if(!ifap)
++    {
++        return -1;
++    }
++    *ifap = NULL;
++    
++    int l_socket = netlink_socket();
++    if(l_socket < 0)
++    {
++        return -1;
++    }
++    
++    NetlinkList *l_linkResults = getResultList(l_socket, RTM_GETLINK);
++    if(!l_linkResults)
++    {
++        close(l_socket);
++        return -1;
++    }
++    
++    NetlinkList *l_addrResults = getResultList(l_socket, RTM_GETADDR);
++    if(!l_addrResults)
++    {
++        close(l_socket);
++        freeResultList(l_linkResults);
++        return -1;
++    }
++    
++    unsigned l_numLinks = countLinks(l_socket, l_linkResults) + countLinks(l_socket, l_addrResults);
++    struct ifaddrs *l_links[l_numLinks];
++    memset(l_links, 0, l_numLinks * sizeof(struct ifaddrs *));
++    
++    interpret(l_socket, l_linkResults, l_links, ifap);
++    interpret(l_socket, l_addrResults, l_links, ifap);
++
++    freeResultList(l_linkResults);
++    freeResultList(l_addrResults);
++    close(l_socket);
++    return 0;
++}
++
++static void freeifaddrs(struct ifaddrs *ifa)
++{
++    struct ifaddrs *l_cur;
++    while(ifa)
++    {
++        l_cur = ifa;
++        ifa = ifa->ifa_next;
++        free(l_cur);
++    }
++}
++#endif
++
+ int NetworkPerformanceInterface::NetworkPerformance::network_utilization(NetworkInterface** network_interfaces) const
+ {
+   ifaddrs* addresses;
+diff --git a/hotspot/src/share/vm/utilities/elfFile.hpp b/hotspot/src/share/vm/utilities/elfFile.hpp
+index 3ce8e92cc3..8d4f1120c8 100644
+--- a/hotspot/src/share/vm/utilities/elfFile.hpp
++++ b/hotspot/src/share/vm/utilities/elfFile.hpp
+@@ -47,8 +47,10 @@ typedef Elf64_Phdr      Elf_Phdr;
+ typedef Elf64_Sym       Elf_Sym;
+ 
+ #if !defined(_ALLBSD_SOURCE) || defined(__APPLE__)
++#ifndef __ANDROID__
+ #define ELF_ST_TYPE ELF64_ST_TYPE
+ #endif
++#endif
+ 
+ #else
+ 
+@@ -64,9 +66,11 @@ typedef Elf32_Phdr      Elf_Phdr;
+ typedef Elf32_Sym       Elf_Sym;
+ 
+ #if !defined(_ALLBSD_SOURCE) || defined(__APPLE__)
++#ifndef __ANDROID__
+ #define ELF_ST_TYPE ELF32_ST_TYPE
+ #endif
+ #endif
++#endif
+ 
+ #include "globalDefinitions.hpp"
+ #include "memory/allocation.hpp"
