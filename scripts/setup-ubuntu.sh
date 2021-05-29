@@ -28,6 +28,7 @@ PACKAGES+=" unzip"
 PACKAGES+=" autoconf"
 PACKAGES+=" automake"
 PACKAGES+=" autopoint"
+PACKAGES+=" autogen"
 PACKAGES+=" bison"
 PACKAGES+=" flex"
 PACKAGES+=" g++"
@@ -72,6 +73,15 @@ PACKAGES+=" bsdmainutils"
 
 # Needed by package ccnet.
 PACKAGES+=" valac"
+
+# Needed by package libgcrypt.
+PACKAGES+=" fig2dev"
+
+# Needed by package libidn2.
+PACKAGES+=" gengetopt"
+
+# Needed by package proxmark3-git.
+PACKAGES+=" swig"
 
 # Needed by package dbus-glib.
 PACKAGES+=" libdbus-1-dev"
