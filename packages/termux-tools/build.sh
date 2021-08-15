@@ -15,7 +15,7 @@ TERMUX_PKG_CONFFILES="etc/motd"
 # Some of these packages are not dependencies and used only to ensure
 # that core packages are installed after upgrading (we removed busybox
 # from essentials).
-TERMUX_PKG_DEPENDS="bzip2, coreutils, curl, dash, diffutils, findutils, gawk, grep, gzip, less, procps, psmisc, sed, tar, termux-am, termux-exec, util-linux, xz-utils, dialog"
+TERMUX_PKG_DEPENDS="bzip2, coreutils, curl, dash, diffutils, findutils, gawk, grep, gzip, less, procps, psmisc, sed, tar, termux-exec, util-linux, xz-utils, dialog"
 
 # Optional packages that are distributed as part of bootstrap archives.
 TERMUX_PKG_RECOMMENDS="ed, dos2unix, inetutils, net-tools, patch, unzip"
@@ -34,9 +34,7 @@ termux_step_make_install() {
 		chmod +x $WRAPPER_FILE
 	done
 
-	for script in chsh dalvikvm login pkg su termux-fix-shebang termux-info \
-		termux-open termux-open-url termux-reload-settings termux-reset \
-		termux-setup-storage termux-wake-lock termux-wake-unlock termux-change-repo; do
+	for script in chsh dalvikvm; do
 			install -Dm700 $TERMUX_PKG_BUILDER_DIR/$script $TERMUX_PREFIX/bin/$script
 			sed -i -e "s%\@TERMUX_APP_PACKAGE\@%${TERMUX_APP_PACKAGE}%g" \
 				-e "s%\@TERMUX_BASE_DIR\@%${TERMUX_BASE_DIR}%g" \
