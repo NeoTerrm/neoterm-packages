@@ -6,7 +6,7 @@ TERMUX_PKG_VERSION=2.3.8
 TERMUX_PKG_SRCURL=https://deb.debian.org/debian/pool/main/a/apt/apt_${TERMUX_PKG_VERSION}.tar.xz
 TERMUX_PKG_SHA256=485af1430c75e3158b715e4424dbf96d1b5641dc4dccc50f571b2c779a837f2c
 # apt-key requires utilities from coreutils, findutils, gpgv, grep, sed.
-TERMUX_PKG_DEPENDS="coreutils, dpkg, findutils, gpgv, grep, libandroid-glob, libbz2, libc++, libcurl, libgnutls, liblz4, liblzma, sed, termux-licenses, xxhash, zlib"
+TERMUX_PKG_DEPENDS="coreutils, dpkg, findutils, gpgv, grep, libandroid-glob, libbsd ,libbz2, libc++, libcurl, libgnutls, liblz4, liblzma, sed, termux-licenses, xxhash, zlib"
 TERMUX_PKG_BUILD_DEPENDS="docbook-xsl"
 TERMUX_PKG_CONFLICTS="apt-transport-https, libapt-pkg"
 TERMUX_PKG_REPLACES="apt-transport-https, libapt-pkg"
@@ -16,7 +16,6 @@ TERMUX_PKG_ESSENTIAL=true
 
 TERMUX_PKG_CONFFILES="
 etc/apt/sources.list
-etc/apt/trusted.gpg
 "
 
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
@@ -70,7 +69,7 @@ termux_step_pre_configure() {
 }
 
 termux_step_post_make_install() {
-	printf "# The main termux repository:\ndeb https://packages.termux.org/apt/termux-main/ stable main\n" > $TERMUX_PREFIX/etc/apt/sources.list
+	printf "# The main termux repository:\ndeb [trusted=yes] https://raw.githubusercontent.com/NeoTerm/NeoTerm-repo/main/ stable main\n" > $TERMUX_PREFIX/etc/apt/sources.list
 	cp $TERMUX_PKG_BUILDER_DIR/trusted.gpg $TERMUX_PREFIX/etc/apt/
 
 	# apt-transport-tor
