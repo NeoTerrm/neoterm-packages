@@ -19,7 +19,7 @@ BOOTSTRAP_ANDROID10_COMPATIBLE=false
 TERMUX_ARCHITECTURES=("aarch64" "arm" "i686" "x86_64")
 
 # Can be changed by using '--repository' option.
-REPO_BASE_URL="https://packages.termux.org/apt/termux-main"
+REPO_BASE_URL="https://raw.githubusercontent.com/NeoTerm/NeoTerm-repo/main"
 
 # A list of non-essential packages. By default it is empty, but can
 # be filled with option '--add'.
@@ -298,49 +298,10 @@ for package_arch in "${TERMUX_ARCHITECTURES[@]}"; do
 	declare -A PACKAGE_METADATA
 	read_package_list "$package_arch"
 
-	# Package manager.
-	if ! ${BOOTSTRAP_ANDROID10_COMPATIBLE}; then
-		pull_package apt
-		pull_package game-repo
-		pull_package science-repo
-	fi
-
 	# Core utilities.
 	pull_package bash
-	pull_package bzip2
-	if ! ${BOOTSTRAP_ANDROID10_COMPATIBLE}; then
-		pull_package command-not-found
-	else
-		pull_package proot
-	fi
-	pull_package coreutils
-	pull_package curl
-	pull_package dash
-	pull_package diffutils
-	pull_package findutils
-	pull_package gawk
-	pull_package grep
-	pull_package gzip
-	pull_package less
-	pull_package procps
-	pull_package psmisc
-	pull_package sed
-	pull_package tar
-	pull_package termux-exec
-	pull_package termux-tools
-	pull_package util-linux
-	pull_package xz-utils
-
-	# Additional.
-	pull_package ed
-	pull_package debianutils
-	pull_package dos2unix
-	pull_package inetutils
-	pull_package lsof
+	pull_package apt
 	pull_package nano
-	pull_package net-tools
-	pull_package patch
-	pull_package unzip
 
 	# Handle additional packages.
 	for add_pkg in "${ADDITIONAL_PACKAGES[@]}"; do
