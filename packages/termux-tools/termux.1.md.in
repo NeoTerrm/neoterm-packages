@@ -597,7 +597,7 @@ Android does not allow to have a direct write access to external storage
 like SD-cards and USB drives unless you are not doing so in private
 directories like
 
-    /storage/0123-ABCD/Android/data/io.neoterm/files
+    /storage/0123-ABCD/Android/data/com.termux/files
 
 If you want to write files to storage root or directory other than private
 one of Termux, you need superuser permissions.
@@ -643,7 +643,7 @@ storage access over Android API which cannot be used by shell.
 From that point you are locked to Termux private directories like $HOME or
 such on storage volume:
 
-    /storage/self/primary/Android/data/io.neoterm/files
+    /storage/self/primary/Android/data/com.termux/files
 
 You still should be able to exchange files with Termux home directory by
 accessing Termux virtual volume through File managers supporting Storage

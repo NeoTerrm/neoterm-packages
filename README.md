@@ -1,11 +1,13 @@
 # Termux packages
 
+![GitHub repo size](https://img.shields.io/github/repo-size/termux/termux-packages)
 [![Packages last build status](https://github.com/termux/termux-packages/workflows/Packages/badge.svg)](https://github.com/termux/termux-packages/actions)
 [![Docker image status](https://github.com/termux/termux-packages/workflows/Docker%20image/badge.svg)](https://hub.docker.com/r/termux/package-builder)
+[![Repology metadata](https://github.com/termux/repology-metadata/workflows/Repology%20metadata/badge.svg)](https://repology.org/repository/termux)
 [![Join the chat at https://gitter.im/termux/termux](https://badges.gitter.im/termux/termux.svg)](https://gitter.im/termux/termux)
-![GitHub repo size](https://img.shields.io/github/repo-size/termux/termux-packages)
+[![Join the Termux discord server](https://img.shields.io/discord/591914197219016707.svg?label=&logo=discord&logoColor=ffffff&color=5865F2)](https://discord.gg/HXpF69X)
 
-[![Powered by FossHost](./.github/static/powered-by-fosshost.png)](https://fosshost.org)
+<img src=".github/static/powered-by-fosshost.png" alt="Powered by FossHost" width="128px"></img>
 
 This project contains scripts and patches to build packages for the [Termux](https://github.com/termux/termux-app)
 Android application.
@@ -25,6 +27,6 @@ General mailing list: https://groups.io/g/termux
 
 Developer mailing list: https://groups.io/g/termux-dev
 
-General chat: https://gitter.im/termux/termux or #termux on IRC/freenode.
+General chat: https://gitter.im/termux/termux or #termux on IRC/libera.chat.
 
-Developer chat: https://gitter.im/termux/dev or #termux/development on IRC/freenode.
+Developer chat: https://gitter.im/termux/dev.

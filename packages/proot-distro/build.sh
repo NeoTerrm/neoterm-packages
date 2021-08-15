@@ -2,25 +2,30 @@ TERMUX_PKG_HOMEPAGE=https://github.com/termux/proot-distro
 TERMUX_PKG_DESCRIPTION="Termux official utility for managing proot'ed Linux distributions"
 TERMUX_PKG_LICENSE="GPL-3.0"
 TERMUX_PKG_MAINTAINER="Leonid Pliushch <leonid.pliushch@gmail.com>"
-TERMUX_PKG_VERSION=1.6.2
-TERMUX_PKG_SRCURL=https://github.com/NeoTerm/proot-distro/archive/v${TERMUX_PKG_VERSION}.tar.gz
-TERMUX_PKG_SHA256=3407a5052f0cfdccddcb00e56ed97878d01b8c9f80fa47ff29fce2aae3ae944b
+TERMUX_PKG_VERSION=2.0.1
+TERMUX_PKG_SRCURL=https://github.com/termux/proot-distro/archive/v${TERMUX_PKG_VERSION}.tar.gz
+TERMUX_PKG_SHA256=25079d33c6b9ec9b2b50ec73202a4a2d3351d6113c23f80d7c2e6435bb075f95
 TERMUX_PKG_DEPENDS="bash, bzip2, coreutils, curl, findutils, gzip, ncurses-utils, proot (>= 5.1.107-32), sed, tar, xz-utils"
 TERMUX_PKG_BUILD_IN_SRC=true
 TERMUX_PKG_PLATFORM_INDEPENDENT=true
 
-# Allow to edit distribution plug-ins.
-TERMUX_PKG_CONFFILES="
-etc/proot-distro/alpine.sh
-etc/proot-distro/archlinux.sh
-etc/proot-distro/debian-buster.sh
-etc/proot-distro/fedora-33.sh
-etc/proot-distro/nethunter.sh
-etc/proot-distro/parrot-lts.sh
-etc/proot-distro/ubuntu-18.04.sh
-etc/proot-distro/ubuntu-20.04.sh
-"
-
 termux_step_make_install() {
-	./install.sh
+	TERMUX_PREFIX="$TERMUX_PREFIX" TERMUX_ANDROID_HOME="$TERMUX_ANDROID_HOME" ./install.sh
+}
+
+termux_step_create_debscripts() {
+	cat <<- EOF > ./preinst
+	#!${TERMUX_PREFIX}/bin/bash
+	set -e
+	shopt -s nullglob
+
+	for i in ${TERMUX_PREFIX}/etc/proot-distro/*.sh; do
+	  if ! grep -qP "^\s*TARBALL_URL" "\$i"; then
+	    echo "Disabling old style v1.x proot-distro plug-in: \$(basename "\$i")"
+	    mv -f "\${i}" "\${i}.bak"
+	  fi
+	done
+
+	exit 0
+	EOF
 }
