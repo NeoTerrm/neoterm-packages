@@ -30,29 +30,14 @@ termux_step_setup_variables() {
 	: "${TERMUX_PKG_MAINTAINER:="default"}"
 
 	TERMUX_REPO_URL=(
-		https://packages.termux.org/apt/termux-main
-		https://packages.termux.org/apt/termux-games
-		https://packages.termux.org/apt/termux-science
-		https://packages.termux.org/apt/termux-root
-		https://packages.termux.org/apt/termux-unstable
-		https://packages.termux.org/apt/termux-x11
+		https://raw.githubusercontent.com/NeoTerm/NeoTerm-repo/main/
 	)
 
 	TERMUX_REPO_DISTRIBUTION=(
 		stable
-		games
-		science
-		root
-		unstable
-		x11
 	)
 
 	TERMUX_REPO_COMPONENT=(
-		main
-		stable
-		stable
-		stable
-		main
 		main
 	)
 
